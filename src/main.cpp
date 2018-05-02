@@ -1,6 +1,6 @@
 
 #include "../../common/desktop-console/filter_chain.h"
-#include "../../common/desktop-console/filter_chain_holder.h"
+#include "../../common/desktop-console/filter_chain_manager.h"
 #include "../../common/desktop-console/config.h"
 
 #include "../../common/rtl/FilesystemLib.h"
@@ -9,6 +9,8 @@
 #include <csignal>
 #include <mutex>
 #include <condition_variable>
+
+#include <QtCore/QCoreApplication>
 
 // closing flag (to avoid spurious wakeup problems)
 bool gClosing = false;
@@ -31,17 +33,19 @@ void sighandler(int signo)
 
 int _cdecl main(int argc, char** argv)
 {
+	QCoreApplication app(argc, argv);
+
 	signal(SIGINT, sighandler);
 
-	// create chain holder - it holds CFilter_Chain instance
-	CFilter_Chain_Holder filterChainHolder;
+	// create chain manager - it holds CFilter_Chain instance
+	CFilter_Chain_Manager filterChainManager;
 
 	// load config and retrieve loaded filter chain
 	Configuration.Resolve_And_Load_Config_File();
-	Configuration.Load(filterChainHolder.Get_Filter_Chain());
+	Configuration.Load(filterChainManager.Get_Filter_Chain());
 
 	// attempt to initialize and start filters
-	if (filterChainHolder.Init_And_Start_Filters() != S_OK)
+	if (filterChainManager.Init_And_Start_Filters() != S_OK)
 		return 1;
 
 	// wait for user to close app
