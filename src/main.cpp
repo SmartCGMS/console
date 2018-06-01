@@ -41,7 +41,10 @@ int _cdecl main(int argc, char** argv)
 	CFilter_Chain_Manager filterChainManager;
 
 	// load config and retrieve loaded filter chain
-	Configuration.Resolve_And_Load_Config_File();
+	Configuration.Resolve_And_Load_Config_File(argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{});	//config uses QApp to determine the file path (to be platorm indepenedent) and it has to be initialized first
+																																//but it tries to load custom config as well
+
+
 	Configuration.Load(filterChainManager.Get_Filter_Chain());
 
 	// attempt to initialize and start filters
