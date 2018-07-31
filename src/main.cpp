@@ -10,50 +10,37 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <QtCore/QCoreApplication>
-
-// closing flag (to avoid spurious wakeup problems)
-bool gClosing = false;
-// mutex for closing condition variable
-std::mutex gClose_Mtx;
-// closing condition variable
-std::condition_variable gClose_Cv;
+std::unique_ptr<CFilter_Chain_Manager> gFilter_Chain_Manager;
 
 void sighandler(int signo)
 {
-	if (signo == SIGINT)
-	{
-		std::unique_lock<std::mutex> lck(gClose_Mtx);
-
-		// set closing flag, notify main thread
-		gClosing = true;
-		gClose_Cv.notify_all();
-	}
+	// SIGINT should terminate filters; this will eventually terminate whole app
+	if (signo == SIGINT) {
+		glucose::UDevice_Event shut_down_event{ glucose::NDevice_Event_Code::Shut_Down };
+		gFilter_Chain_Manager->Send(shut_down_event);
+	}		
 }
 
-int _cdecl main(int argc, char** argv)
-{
-	QCoreApplication app(argc, argv);
-
+int main(int argc, char** argv) {
 	signal(SIGINT, sighandler);
 
-	// create chain manager - it holds CFilter_Chain instance
-	CFilter_Chain_Manager filterChainManager;
+	// create chain holder - it holds CFilter_Chain instance
+	gFilter_Chain_Manager = std::make_unique<CFilter_Chain_Manager>();
 
 	// load config and retrieve loaded filter chain
-	Configuration.Resolve_And_Load_Config_File(argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{});	//config uses QApp to determine the file path (to be platorm indepenedent) and it has to be initialized first
-																																//but it tries to load custom config as well
-
-
-	Configuration.Load(filterChainManager.Get_Filter_Chain());
+	Configuration.Resolve_And_Load_Config_File(argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{});
+	Configuration.Load(gFilter_Chain_Manager->Get_Filter_Chain());
 
 	// attempt to initialize and start filters
-	if (filterChainManager.Init_And_Start_Filters() != S_OK)
+	HRESULT rc = gFilter_Chain_Manager->Init_And_Start_Filters();
+	if (rc != S_OK)
+	{
+		std::cerr << "Could not initialize filter chain, return code: " << rc << std::endl;
 		return 1;
+	}
 
-	// wait for user to close app
-	std::unique_lock<std::mutex> lck(gClose_Mtx);
-	gClose_Cv.wait(lck, []() { return gClosing; });
+	// wait for filters to finish, or user to close app
+	gFilter_Chain_Manager->Join_Filters();
 
 	return 0;
 }
