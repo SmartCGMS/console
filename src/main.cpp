@@ -34,6 +34,7 @@
 #include "../../common/desktop-console/config.h"
 
 #include "../../common/rtl/FilesystemLib.h"
+#include "../../common/utils/winapi_mapping.h"
 
 #include <iostream>
 #include <csignal>
@@ -53,7 +54,7 @@ void sighandler(int signo)
 	}		
 }
 
-int main(int argc, char** argv) {
+int MainCalling main(int argc, char** argv) {
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
 
 	signal(SIGINT, sighandler);
