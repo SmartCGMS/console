@@ -52,8 +52,7 @@
 
 std::unique_ptr<CFilter_Chain_Manager> gFilter_Chain_Manager;
 
-void sighandler(int signo)
-{
+void MainCalling sighandler(int signo) {
 	// SIGINT should terminate filters; this will eventually terminate whole app
 	if (signo == SIGINT) {
 		glucose::UDevice_Event shut_down_event{ glucose::NDevice_Event_Code::Shut_Down };
