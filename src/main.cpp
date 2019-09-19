@@ -36,10 +36,9 @@
  *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
  */
 
-#include "../../common/desktop-console/filter_chain.h"
-#include "../../common/desktop-console/filter_chain_manager.h"
-#include "../../common/desktop-console/config.h"
+#include "../../common/desktop-console/qdb_connector.h"
 
+#include "../../common/rtl/FilterLib.h"
 #include "../../common/rtl/FilesystemLib.h"
 #include "../../common/utils/winapi_mapping.h"
 
@@ -50,30 +49,36 @@
 
 #include <QtCore/QCoreApplication>
 
-std::unique_ptr<CFilter_Chain_Manager> gFilter_Chain_Manager;
+glucose::SFilter_Chain_Executor gFilter_Chain_Manager;
 
 void MainCalling sighandler(int signo) {
+	if (!gFilter_Chain_Manager) return;
+
 	// SIGINT should terminate filters; this will eventually terminate whole app
 	if (signo == SIGINT) {
 		glucose::UDevice_Event shut_down_event{ glucose::NDevice_Event_Code::Shut_Down };
-		gFilter_Chain_Manager->Send(shut_down_event);
+		glucose::IDevice_Event* shut_down_event_raw = shut_down_event.get();
+		shut_down_event.release();
+		gFilter_Chain_Manager->send(shut_down_event_raw);
 	}
 }
+
 
 int MainCalling main(int argc, char** argv) {
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
 
 	signal(SIGINT, sighandler);
 
-	// create chain holder - it holds CFilter_Chain instance
-	gFilter_Chain_Manager = std::make_unique<CFilter_Chain_Manager>();
+	//Let's try to load the configuration file
+	const std::wstring config_filepath = argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{};
+	glucose::SPersistent_Filter_Chain_Configuration configuration { config_filepath };
 
-	// load config and retrieve loaded filter chain
-	Configuration.Resolve_And_Load_Config_File(argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{});
-	Configuration.Load(gFilter_Chain_Manager->Get_Filter_Chain());
+	//create the chain manager according to the loaded configration
+	gFilter_Chain_Manager = glucose::SFilter_Chain_Executor{ configuration, nullptr, Setup_Filter_DB_Access, nullptr };
+
 
 	// attempt to initialize and start filters
-	HRESULT rc = gFilter_Chain_Manager->Init_And_Start_Filters();
+	HRESULT rc = gFilter_Chain_Manager->Start();
 	if (rc != S_OK)
 	{
 		std::cerr << "Could not initialize filter chain, return code: " << rc << std::endl;
@@ -81,7 +86,7 @@ int MainCalling main(int argc, char** argv) {
 	}
 
 	// wait for filters to finish, or user to close app
-	gFilter_Chain_Manager->Join_Filters();
+	gFilter_Chain_Manager->Stop();
 
 	return 0;
 }
