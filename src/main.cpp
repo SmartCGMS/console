@@ -71,17 +71,23 @@ int MainCalling main(int argc, char** argv) {
 
 	//Let's try to load the configuration file
 	const std::wstring config_filepath = argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{};
-	glucose::SPersistent_Filter_Chain_Configuration configuration { config_filepath };
-
+	glucose::SPersistent_Filter_Chain_Configuration configuration;
+	HRESULT rc = configuration->Load_From_File(config_filepath.c_str());
+	if (rc != S_OK) {
+		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;
+		return 2;
+	}
+	
 	//create the chain manager according to the loaded configration
 	gFilter_Chain_Manager = glucose::SFilter_Chain_Executor{ configuration, nullptr, Setup_Filter_DB_Access, nullptr };
-
-
+	
+	
+	return 0;
 	// attempt to initialize and start filters
-	HRESULT rc = gFilter_Chain_Manager->Start();
+	rc = gFilter_Chain_Manager->Start();
 	if (rc != S_OK)
 	{
-		std::cerr << "Could not initialize filter chain, return code: " << rc << std::endl;
+		std::wcerr << L"Could not initialize filter chain, return code: " << rc << std::endl;
 		return 1;
 	}
 
