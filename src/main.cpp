@@ -49,7 +49,7 @@
 
 #include <QtCore/QCoreApplication>
 
-glucose::SFilter_Chain_Executor gFilter_Chain_Manager;
+glucose::SComposite_Filter Global_Filter;
 
 void MainCalling sighandler(int signo) {
 	if (!gFilter_Chain_Manager) return;
@@ -78,9 +78,12 @@ int MainCalling main(int argc, char** argv) {
 		return 2;
 	}
 	
+	glucose::SFilter_Communicator communicator;
+
 	//create the chain manager according to the loaded configration
-	gFilter_Chain_Manager = glucose::SFilter_Chain_Executor{ configuration, nullptr, Setup_Filter_DB_Access, nullptr };
-	
+	Global_Filter = glucose::SComposite_Filter{ configuration, communicator,  nullptr, Setup_Filter_DB_Access, nullptr };
+		
+		
 	
 	return 0;
 	// attempt to initialize and start filters
