@@ -44,22 +44,21 @@
 
 #include <iostream>
 #include <csignal>
-#include <mutex>
-#include <condition_variable>
+
 
 #include <QtCore/QCoreApplication>
 
-glucose::SComposite_Filter Global_Filter;
+glucose::SFilter_Executor gFilter_Executor;
 
 void MainCalling sighandler(int signo) {
-	if (!gFilter_Chain_Manager) return;
+	if (!gFilter_Executor) return;
 
 	// SIGINT should terminate filters; this will eventually terminate whole app
 	if (signo == SIGINT) {
 		glucose::UDevice_Event shut_down_event{ glucose::NDevice_Event_Code::Shut_Down };
 		glucose::IDevice_Event* shut_down_event_raw = shut_down_event.get();
 		shut_down_event.release();
-		gFilter_Chain_Manager->send(shut_down_event_raw);
+		gFilter_Executor->Execute(shut_down_event_raw);
 	}
 }
 
@@ -72,30 +71,23 @@ int MainCalling main(int argc, char** argv) {
 	//Let's try to load the configuration file
 	const std::wstring config_filepath = argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{};
 	glucose::SPersistent_Filter_Chain_Configuration configuration;
+	
 	HRESULT rc = configuration->Load_From_File(config_filepath.c_str());
 	if (rc != S_OK) {
 		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;
 		return 2;
 	}
 	
-	glucose::SFilter_Communicator communicator;
-
-	//create the chain manager according to the loaded configration
-	Global_Filter = glucose::SComposite_Filter{ configuration, communicator,  nullptr, Setup_Filter_DB_Access, nullptr };
-		
-		
+	gFilter_Executor = glucose::SFilter_Executor{ configuration, Setup_Filter_DB_Access, nullptr };
 	
-	return 0;
-	// attempt to initialize and start filters
-	rc = gFilter_Chain_Manager->Start();
-	if (rc != S_OK)
+	if (!gFilter_Executor)
 	{
-		std::wcerr << L"Could not initialize filter chain, return code: " << rc << std::endl;
+		std::wcerr << L"Could not execute the filters!" << std::endl;
 		return 1;
 	}
 
 	// wait for filters to finish, or user to close app
-	gFilter_Chain_Manager->Stop();
+	gFilter_Executor->Wait_For_Shutdown_and_Terminate();
 
 	return 0;
 }
