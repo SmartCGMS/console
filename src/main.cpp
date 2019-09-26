@@ -36,9 +36,8 @@
  *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
  */
 
-#include "../../common/desktop-console/qdb_connector.h"
-
 #include "../../common/rtl/FilterLib.h"
+#include "../../common/rtl/qdb_connector.h"
 #include "../../common/rtl/FilesystemLib.h"
 #include "../../common/utils/winapi_mapping.h"
 
@@ -50,33 +49,33 @@
 
 glucose::SFilter_Executor gFilter_Executor;
 
-void MainCalling sighandler(int signo) {
-	if (!gFilter_Executor) return;
-
+void MainCalling sighandler(int signo) {	
 	// SIGINT should terminate filters; this will eventually terminate whole app
 	if (signo == SIGINT) {
-		glucose::UDevice_Event shut_down_event{ glucose::NDevice_Event_Code::Shut_Down };
-		glucose::IDevice_Event* shut_down_event_raw = shut_down_event.get();
-		shut_down_event.release();
-		gFilter_Executor->Execute(shut_down_event_raw);
+		if (gFilter_Executor) 
+			gFilter_Executor.Execute(glucose::UDevice_Event { glucose::NDevice_Event_Code::Shut_Down });
 	}
 }
 
 
-int MainCalling main(int argc, char** argv) {
+int MainCalling main(int argc, char** argv) {	
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
-
+	
 	signal(SIGINT, sighandler);
 
 	//Let's try to load the configuration file
 	const std::wstring config_filepath = argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{};
 	glucose::SPersistent_Filter_Chain_Configuration configuration;
 	
-	HRESULT rc = configuration->Load_From_File(config_filepath.c_str());
-	if (rc != S_OK) {
+	HRESULT rc = configuration ? S_OK : E_FAIL;
+	if (rc == S_OK) configuration->Load_From_File(config_filepath.c_str());
+	if (!SUCCEEDED(rc)) {
 		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;
 		return 2;
 	}
+
+	if (rc == S_FALSE)
+		std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
 	
 	gFilter_Executor = glucose::SFilter_Executor{ configuration, Setup_Filter_DB_Access, nullptr };
 	
@@ -86,7 +85,8 @@ int MainCalling main(int argc, char** argv) {
 		return 1;
 	}
 
-	// wait for filters to finish, or user to close app
+
+	// wait for filters to finish, or user to close the app
 	gFilter_Executor->Wait_For_Shutdown_and_Terminate();
 
 	return 0;
