@@ -77,7 +77,7 @@ int MainCalling main(int argc, char** argv) {
 	if (rc == S_FALSE)
 		std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
 	
-	gFilter_Executor = glucose::SFilter_Executor{ configuration, Setup_Filter_DB_Access, nullptr };
+	gFilter_Executor = glucose::SFilter_Executor{ configuration.get(), Setup_Filter_DB_Access, nullptr };
 	
 	if (!gFilter_Executor)
 	{
