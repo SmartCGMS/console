@@ -52,8 +52,10 @@ glucose::SFilter_Executor gFilter_Executor;
 void MainCalling sighandler(int signo) {	
 	// SIGINT should terminate filters; this will eventually terminate whole app
 	if (signo == SIGINT) {
-		if (gFilter_Executor) 
-			gFilter_Executor.Execute(glucose::UDevice_Event { glucose::NDevice_Event_Code::Shut_Down });
+		if (gFilter_Executor) {
+			glucose::UDevice_Event shut_down_event{ glucose::NDevice_Event_Code::Shut_Down };
+			gFilter_Executor.Execute(shut_down_event);
+		}
 	}
 }
 
