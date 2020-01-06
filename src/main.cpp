@@ -47,13 +47,13 @@
 
 #include <QtCore/QCoreApplication>
 
-glucose::SFilter_Executor gFilter_Executor;
+scgms::SFilter_Executor gFilter_Executor;
 
 void MainCalling sighandler(int signo) {	
 	// SIGINT should terminate filters; this will eventually terminate whole app
 	if (signo == SIGINT) {
 		if (gFilter_Executor) {
-			glucose::UDevice_Event shut_down_event{ glucose::NDevice_Event_Code::Shut_Down };
+			scgms::UDevice_Event shut_down_event{ scgms::NDevice_Event_Code::Shut_Down };
 			gFilter_Executor.Execute(shut_down_event);
 		}
 	}
@@ -67,7 +67,7 @@ int MainCalling main(int argc, char** argv) {
 
 	//Let's try to load the configuration file
 	const std::wstring config_filepath = argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{};
-	glucose::SPersistent_Filter_Chain_Configuration configuration;
+	scgms::SPersistent_Filter_Chain_Configuration configuration;
 	
 	HRESULT rc = configuration ? S_OK : E_FAIL;
 	if (rc == S_OK) configuration->Load_From_File(config_filepath.c_str());
@@ -79,7 +79,7 @@ int MainCalling main(int argc, char** argv) {
 	if (rc == S_FALSE)
 		std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
 	
-	gFilter_Executor = glucose::SFilter_Executor{ configuration.get(), Setup_Filter_DB_Access, nullptr };
+	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(), Setup_Filter_DB_Access, nullptr };
 	
 	if (!gFilter_Executor)
 	{
