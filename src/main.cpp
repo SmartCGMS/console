@@ -54,7 +54,7 @@ void MainCalling sighandler(int signo) {
 	if (signo == SIGINT) {
 		if (gFilter_Executor) {
 			scgms::UDevice_Event shut_down_event{ scgms::NDevice_Event_Code::Shut_Down };
-			gFilter_Executor.Execute(shut_down_event);
+			gFilter_Executor.Execute(std::move(shut_down_event));
 		}
 	}
 }
