@@ -39,6 +39,7 @@
 #include "../../common/rtl/FilterLib.h"
 #include "../../common/rtl/qdb_connector.h"
 #include "../../common/rtl/FilesystemLib.h"
+#include "../../common/rtl/referencedImpl.h"
 #include "../../common/utils/winapi_mapping.h"
 
 #include <iostream>
@@ -59,6 +60,16 @@ void MainCalling sighandler(int signo) {
 	}
 }
 
+void print_and_empty_errors(refcnt::Swstr_list errors) {
+    refcnt::wstr_container *wstr;
+    if (errors->empty() != S_OK) {
+        std::wcerr << "Error description: " << std::endl;
+        while (errors->pop(&wstr) == S_OK) {
+            std::wcerr << refcnt::WChar_Container_To_WString(wstr) << std::endl;
+            wstr->Release();
+        }
+    }
+}
 
 int MainCalling main(int argc, char** argv) {	
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
@@ -69,27 +80,36 @@ int MainCalling main(int argc, char** argv) {
 	const std::wstring config_filepath = argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{};
 	scgms::SPersistent_Filter_Chain_Configuration configuration;
 	
+    refcnt::Swstr_list errors;
+
+
 	HRESULT rc = configuration ? S_OK : E_FAIL;
-	if (rc == S_OK) configuration->Load_From_File(config_filepath.c_str());
+	if (rc == S_OK) configuration->Load_From_File(config_filepath.c_str(), errors.get());
+    print_and_empty_errors(errors);
+
 	if (!SUCCEEDED(rc)) {
-		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;
+		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;        
 		return 2;
 	}
 
-	if (rc == S_FALSE)
-		std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
+    if (rc == S_FALSE) {
+        std::wcerr << L"Warning: some filters were not loaded!" << std::endl;        
+    }
 	
-	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(), Setup_Filter_DB_Access, nullptr };
-	
+	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(), Setup_Filter_DB_Access, nullptr, errors };
+    print_and_empty_errors(errors);   //prints errors only if there are some
+
 	if (!gFilter_Executor)
 	{
-		std::wcerr << L"Could not execute the filters!" << std::endl;
+		std::wcerr << L"Could not execute the filters!" << std::endl;    
 		return 1;
 	}
 
 
 	// wait for filters to finish, or user to close the app
 	gFilter_Executor->Wait_For_Shutdown_and_Terminate();
+
+    
 
 	return 0;
 }
