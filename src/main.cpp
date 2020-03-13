@@ -107,7 +107,7 @@ int MainCalling main(int argc, char** argv) {
 
 
 	// wait for filters to finish, or user to close the app
-	gFilter_Executor->Wait_For_Shutdown_and_Terminate();
+	gFilter_Executor->Terminate(TRUE);
 
     
 
