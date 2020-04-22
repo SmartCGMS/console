@@ -36,6 +36,7 @@
  *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
  */
 
+#include "../../common/rtl/scgmsLib.h"
 #include "../../common/rtl/FilterLib.h"
 #include "../../common/rtl/qdb_connector.h"
 #include "../../common/rtl/FilesystemLib.h"
@@ -72,6 +73,11 @@ void print_and_empty_errors(refcnt::Swstr_list errors) {
 }
 
 int MainCalling main(int argc, char** argv) {	
+	if (!scgms::is_scgms_loaded()) {
+		std::wcerr << L"SmartCGMS library is not loaded!" << std::endl;
+		return 3;
+	}
+
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
 	
 	signal(SIGINT, sighandler);
