@@ -61,23 +61,21 @@ void MainCalling sighandler(int signo) {
 	}
 }
 
-void print_and_empty_errors(refcnt::Swstr_list errors) {
-    refcnt::wstr_container *wstr;
-    if (errors->empty() != S_OK) {
-        std::wcerr << "Error description: " << std::endl;
-        while (errors->pop(&wstr) == S_OK) {
-            std::wcerr << refcnt::WChar_Container_To_WString(wstr) << std::endl;
-            wstr->Release();
-        }
-    }
-}
-
 int MainCalling main(int argc, char** argv) {	
+	if (argc < 2) {
+		std::wcerr << L"Usage: ";
+		if ((argc>0) && (argv[0]) && (argv[0][0])) std::wcerr << argv[0]; //the standard does permit zero argc and empty argv[0]
+			else std::wcerr << L"console";
+		std::wcerr << " filename" << std::endl << std::endl;
+		std::wcerr << L"The filename designates the configuration of an experimental setup. Usually, it is .ini file." << std::endl;
+						
+		return 4;
+	}
+
 	if (!scgms::is_scgms_loaded()) {
 		std::wcerr << L"SmartCGMS library is not loaded!" << std::endl;
 		return 3;
 	}
-
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
 	
 	signal(SIGINT, sighandler);
@@ -91,7 +89,7 @@ int MainCalling main(int argc, char** argv) {
 
 	HRESULT rc = configuration ? S_OK : E_FAIL;
 	if (rc == S_OK) configuration->Load_From_File(config_filepath.c_str(), errors.get());
-    print_and_empty_errors(errors);
+	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});	
 
 	if (!SUCCEEDED(rc)) {
 		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;        
@@ -102,8 +100,9 @@ int MainCalling main(int argc, char** argv) {
         std::wcerr << L"Warning: some filters were not loaded!" << std::endl;        
     }
 	
+	errors = refcnt::Swstr_list{};	//erase any previous error that we already printed
 	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(), Setup_Filter_DB_Access, nullptr, errors };
-    print_and_empty_errors(errors);   //prints errors only if there are some
+	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
 
 	if (!gFilter_Executor)
 	{
