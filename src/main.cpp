@@ -91,7 +91,7 @@ int MainCalling main(int argc, char** argv) {
 	if (rc == S_OK) configuration->Load_From_File(config_filepath.c_str(), errors.get());
 	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});	
 
-	if (!SUCCEEDED(rc)) {
+	if (!Succeeded(rc)) {
 		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;        
 		return 2;
 	}
