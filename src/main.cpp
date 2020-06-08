@@ -38,16 +38,19 @@
 
 #include "../../common/rtl/scgmsLib.h"
 #include "../../common/rtl/FilterLib.h"
-#include "../../common/rtl/qdb_connector.h"
 #include "../../common/rtl/FilesystemLib.h"
 #include "../../common/rtl/referencedImpl.h"
 #include "../../common/utils/winapi_mapping.h"
 
+#define DDO_NOT_USE_QT
+#ifndef DDO_NOT_USE_QT
+	#include "../../common/rtl/qdb_connector.h"
+	#include <QtCore/QCoreApplication>
+#endif
+
 #include <iostream>
 #include <csignal>
 
-
-#include <QtCore/QCoreApplication>
 
 scgms::SFilter_Executor gFilter_Executor;
 
@@ -76,7 +79,10 @@ int MainCalling main(int argc, char** argv) {
 		std::wcerr << L"SmartCGMS library is not loaded!" << std::endl;
 		return 3;
 	}
+
+#ifndef DDO_NOT_USE_QT
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
+#endif
 	
 	signal(SIGINT, sighandler);
 
@@ -101,7 +107,13 @@ int MainCalling main(int argc, char** argv) {
     }
 	
 	errors = refcnt::Swstr_list{};	//erase any previous error that we already printed
-	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(), Setup_Filter_DB_Access, nullptr, errors };
+	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(), 
+#ifndef DDO_NOT_USE_QT
+		Setup_Filter_DB_Access
+#else
+		nullptr
+#endif
+		,  nullptr, errors };
 	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
 
 	if (!gFilter_Executor)
