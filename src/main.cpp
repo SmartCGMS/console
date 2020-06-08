@@ -42,7 +42,6 @@
 #include "../../common/rtl/referencedImpl.h"
 #include "../../common/utils/winapi_mapping.h"
 
-#define DDO_NOT_USE_QT
 #ifndef DDO_NOT_USE_QT
 	#include "../../common/rtl/qdb_connector.h"
 	#include <QtCore/QCoreApplication>
