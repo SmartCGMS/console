@@ -41,8 +41,14 @@
 #include "../../common/rtl/FilesystemLib.h"
 #include "../../common/rtl/referencedImpl.h"
 #include "../../common/rtl/SolverLib.h"
+#include "../../common/rtl/UILib.h"
 #include "../../common/utils/winapi_mapping.h"
 #include "../../common/utils/string_utils.h"
+
+ /*
+  *	If you do not need database access, or do not want to use Qt, then
+  *  #define DDO_NOT_USE_QT
+  */
 
 #ifndef DDO_NOT_USE_QT
 	#include "../../common/rtl/qdb_connector.h"
@@ -51,6 +57,9 @@
 
 #include <iostream>
 #include <csignal>
+#include <thread>
+#include <climits>
+#include <chrono>
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -61,15 +70,15 @@ class CPriority_Guard {
 public:
 	CPriority_Guard() {
 #ifdef _WIN32
-		std::wcout << L"Process priority lowered to BELOW_NORMAL." << std::endl;
-		SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+		if (SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS))
+			std::wcout << L"Process priority lowered to BELOW_NORMAL." << std::endl;
 #endif
 	}
 	
 	~CPriority_Guard() {
-#ifdef _WIN32
-		std::wcout << L"Process priority restored to NORMAL." << std::endl;
-		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+#ifdef _WIN32		
+		if (SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS))
+			std::wcout << L"Process priority restored to NORMAL." << std::endl;
 #endif
 	}
 };
@@ -80,6 +89,7 @@ const wchar_t* dsOptimize_Switch = L"/optimize=";
 const wchar_t* dsSolver_Switch = L"/solver=";
 
 scgms::SFilter_Executor gFilter_Executor;
+solver::TSolver_Progress progress = solver::Null_Solver_Progress; //so that we can cancel from sigint
 
 
 int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration) {
@@ -171,20 +181,55 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		parameters_name = &arg_3[delim_pos + 1];
 
 		refcnt::Swstr_list errors;
-		solver::TSolver_Progress progress = solver::Null_Solver_Progress;
-		
-		auto [generation_count, population_size, solver_id] = Get_Solver_Parameters(arg_4);
-
+			
 		CPriority_Guard priority_guard;
-		HRESULT rc = scgms::Optimize_Parameters(configuration,
-			optimize_filter_index, parameters_name.c_str(),
+
+		HRESULT rc = E_FAIL;
+		std::atomic<bool> optimizing_flag{ true };
+		std::thread optimitizing_thread([&] {
+			//use thread, not async because that could live-lock on a uniprocessor
+
+			auto [generation_count, population_size, solver_id] = Get_Solver_Parameters(arg_4);
+
+			rc = scgms::Optimize_Parameters(configuration,
+				optimize_filter_index, parameters_name.c_str(),
 #ifndef DDO_NOT_USE_QT
-			Setup_Filter_DB_Access
+				Setup_Filter_DB_Access
 #else
-			nullptr
+				nullptr
 #endif
-			, nullptr,
-			solver_id, population_size, generation_count, progress, errors );
+				, nullptr,
+				solver_id, population_size, generation_count, progress, errors);
+
+			optimizing_flag = false;
+		});
+
+		double recent_percentage = std::numeric_limits<double>::quiet_NaN();
+		double recent_fitness = std::numeric_limits<double>::max();
+		std::wcout << "Will report progress and best fitness. Optimizing...";
+		while (optimizing_flag) {
+			if (progress.max_progress != 0) {
+				double current_percentage = static_cast<double>(progress.current_progress) / static_cast<double>(progress.max_progress);
+				current_percentage = std::trunc(current_percentage * 1000.0);
+				current_percentage *= 0.1;
+				current_percentage = std::min(current_percentage, 100.0);
+
+				if (recent_percentage != current_percentage) {
+					recent_percentage = current_percentage;
+					std::wcout << " " << current_percentage << "%...";
+
+					if (recent_fitness > progress.best_metric) {
+						recent_fitness = progress.best_metric;
+						std::wcout << " " << recent_fitness;
+					}
+				}
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
+
+		if (optimitizing_thread.joinable())
+			optimitizing_thread.join();
 
 		errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
 		
@@ -217,6 +262,10 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 void MainCalling sighandler(int signo) {
 	// SIGINT should terminate filters; this will eventually terminate whole app
 	if (signo == SIGINT) {
+		std::wcout << std::endl << "Cancelling..." << std::endl;
+
+		progress.cancelled = true;
+
 		if (gFilter_Executor) {
 			scgms::UDevice_Event shut_down_event{ scgms::NDevice_Event_Code::Shut_Down };
 			gFilter_Executor.Execute(std::move(shut_down_event));
@@ -226,17 +275,24 @@ void MainCalling sighandler(int signo) {
 
 int POST_Check(int argc, char** argv) {
 	if (argc < 2) {
-		std::wcerr << L"Usage: ";
-		if ((argc > 0) && (argv[0]) && (argv[0][0])) std::wcerr << argv[0]; //the standard does permit zero argc and empty argv[0]
-		else std::wcerr << L"console";
-		std::wcerr << " filename [" << dsOptimize_Switch << "filter_index,parameters_name] [" <<dsSolver_Switch <<"generations[,population[,solver_GUID]]]" << std::endl << std::endl;
-		std::wcerr << L"The filename designates the configuration of an experimental setup. Usually, it is .ini file." << std::endl << std::endl;
-		std::wcerr << L"The filter_index starts at zero. Parameters_name is a string." << std::endl << std::endl;
-		std::wcerr << L"Generations is the maximum number of generations to evolve/computational steps." << std::endl;
-		std::wcerr << L"Population is the population size, when applicable." << std::endl;
-		std::wcerr << L"Solver_GUID is solver's id, formatted like {01274B08-F721-42BC-A562-0556714C5685}." << std::endl;
-		std::wcerr << L"Make no spaces around the , delimiters." << std::endl;
-		std::wcerr << L"Default solver is Halton-driven Meta-Differential Evolution, 1000 generations, 100 population size." << std::endl;
+		std::wcout << L"Usage: ";
+		if ((argc > 0) && (argv[0]) && (argv[0][0])) std::wcout << argv[0]; //the standard does permit zero argc and empty argv[0]
+		else std::wcout << L"console";
+		std::wcout << " filename [" << dsOptimize_Switch << "filter_index,parameters_name[ " <<dsSolver_Switch <<"generations[,population[,solver_GUID]]]]" << std::endl << std::endl;
+		std::wcout << L"The filename designates the configuration of an experimental setup. Usually, it is .ini file." << std::endl << std::endl;
+		std::wcout << L"The filter_index starts at zero. parameters_name is a string." << std::endl << std::endl;
+		std::wcout << L"Generations is the maximum number of generations to evolve/computational steps." << std::endl;
+		std::wcout << L"Population is the population size, when applicable, or 0 to allow entering the solver_id." << std::endl;
+		std::wcout << L"Solver_GUID is solver's id, formatted like {01274B08-F721-42BC-A562-0556714C5685}." << std::endl;
+		std::wcout << L"Make no spaces around the , delimiters." << std::endl;
+		std::wcout << L"Default solver is Halton-driven Meta-Differential Evolution, 1000 generations, 100 population size." << std::endl;
+
+		std::wcout << std::endl << L"Available solvers:" << std::endl;
+
+		
+		for (const auto& solver : scgms::get_solver_descriptors()) 
+			if (!solver.specialized) 
+				std::wcout << GUID_To_WString(solver.id) << " - " << solver.description << std::endl;
 
 		return __LINE__;
 	}
@@ -296,7 +352,7 @@ int MainCalling main(int argc, char** argv) {
 		std::wstring arg_3{ Widen_Char(argv[2]) };
 		if (arg_3.rfind(dsOptimize_Switch, 0) == 0) {
 
-			//cannot safely optimize, if not all filters were loaded
+			//cannot safely optimize, if all filters were not loaded
 			if (rc != S_OK) {
 				std::wcerr << L"Optimization aborted." << std::endl;
 				return __LINE__;
@@ -314,5 +370,5 @@ int MainCalling main(int argc, char** argv) {
 	//Hence, we execute the configuration once more to make the final pass with the best parameters.
 	//Or, we just execute it as if no optimization was asked for.
 
-	return Execute_Configuration(configuration);
+	return progress.cancelled == 0 ? Execute_Configuration(configuration) : __LINE__;
 }
