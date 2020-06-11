@@ -138,8 +138,8 @@ std::tuple<size_t, size_t, GUID> Get_Solver_Parameters(std::wstring arg_4) {
 		if (ok) {
 			std::get<0>(result) = num;
 
-			if (delim_pos != std::wstring::npos) {
-				arg_4.erase(0, delim_pos);
+			if ((delim_pos != std::wstring::npos) && (delim_pos+1<arg_4.size())) {		
+				arg_4 = arg_4.data() + delim_pos+1;
 				delim_pos = arg_4.find(L',');
 				if (delim_pos != std::wstring::npos)
 					arg_4[delim_pos] = 0;
@@ -148,12 +148,14 @@ std::tuple<size_t, size_t, GUID> Get_Solver_Parameters(std::wstring arg_4) {
 				if (ok) {
 					std::get<1>(result) = num;
 
-					arg_4.erase(0, delim_pos);
-					GUID id = WString_To_GUID(trim(arg_4), ok);
-					if (ok)
-						std::get<2>(result) = id;
-					else
-						std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << GUID_To_WString(std::get<2>(result)) << "." << std::endl;
+						if ((delim_pos != std::wstring::npos) && (delim_pos + 1 < arg_4.size())) {
+							arg_4 = arg_4.data() + delim_pos + 1;
+								GUID id = WString_To_GUID(trim(arg_4), ok);
+								if (ok)
+									std::get<2>(result) = id;
+								else
+									std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << GUID_To_WString(std::get<2>(result)) << "." << std::endl;
+						}
 				} else
 					std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << std::get<1>(result) << "." << std::endl;
 			}
