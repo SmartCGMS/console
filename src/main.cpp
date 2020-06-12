@@ -60,6 +60,7 @@
 #include <thread>
 #include <climits>
 #include <chrono>
+#include <cmath>
 
 #ifdef _WIN32
 	#include <Windows.h>
