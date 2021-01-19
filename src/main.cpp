@@ -135,7 +135,7 @@ std::tuple<size_t, size_t, GUID> Get_Solver_Parameters(std::wstring arg_4) {
 			arg_4[delim_pos] = 0;
 				
 		bool ok;
-		size_t num = static_cast<size_t>(wstr_2_int(arg_4.c_str(), ok));
+		size_t num = static_cast<size_t>(str_2_int(arg_4.c_str(), ok));
 		if (ok) {
 			std::get<0>(result) = num;
 
@@ -145,7 +145,7 @@ std::tuple<size_t, size_t, GUID> Get_Solver_Parameters(std::wstring arg_4) {
 				if (delim_pos != std::wstring::npos)
 					arg_4[delim_pos] = 0;
 
-				size_t num = static_cast<size_t>(wstr_2_int(arg_4.c_str(), ok));
+				size_t num = static_cast<size_t>(str_2_int(arg_4.c_str(), ok));
 				if (ok) {
 					std::get<1>(result) = num;
 
@@ -180,7 +180,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 	const auto delim_pos = arg_3.find(L',');
 	if (delim_pos != std::wstring::npos) {
 		arg_3[delim_pos] = 0;
-		optimize_filter_index = wstr_2_int(arg_3.data() + wcslen(dsOptimize_Switch));
+		optimize_filter_index = str_2_int(arg_3.data() + wcslen(dsOptimize_Switch));
 		parameters_name = &arg_3[delim_pos + 1];
 
 		refcnt::Swstr_list errors;
