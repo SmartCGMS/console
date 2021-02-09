@@ -367,6 +367,10 @@ int MainCalling main(int argc, char** argv) {
 			if (OS_rc != 0)
 				return OS_rc;
 		}
+		else {
+			std::wcerr << L"Stopping, encountered unknown option: " << arg_3 << std::endl;
+			return __LINE__;
+		}
 	}
 	
 	//If we have optimized succesfully, then the best parameters are already saved.
