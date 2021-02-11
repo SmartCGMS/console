@@ -318,18 +318,22 @@ std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experime
 	refcnt::Swstr_list errors;
 
 
-	HRESULT rc = configuration ? S_OK : E_FAIL;
-	if (rc == S_OK) configuration->Load_From_File(config_filepath.c_str(), errors.get());
+	HRESULT rc = E_FAIL;		//asssume the worst
+	if (configuration) {		//and check whether we have constructed the main config container
+		rc = configuration->Load_From_File(config_filepath.c_str(), errors.get());	//and load it if we did
+	}
+	
 	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
 
-	if (!Succeeded(rc))
-		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;	
-
-	if (rc == S_FALSE)
-		std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
-
 	std::get<0>(result) = rc;
-	std::get<1>(result) = std::move(configuration);
+
+	if (Succeeded(rc)) {
+		std::get<1>(result) = std::move(configuration);
+
+		if (rc == S_FALSE)
+			std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
+	} else
+		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;	
 
 	return result;
 }
