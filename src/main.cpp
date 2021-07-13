@@ -88,12 +88,13 @@ public:
 
 const wchar_t* dsOptimize_Switch = L"/optimize=";
 const wchar_t* dsSolver_Switch = L"/solver=";
+const std::string dsSave_Config_Switch = "/save_configuration";
 
 scgms::SFilter_Executor gFilter_Executor;
 solver::TSolver_Progress progress = solver::Null_Solver_Progress; //so that we can cancel from sigint
 
 
-int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration) {
+int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, const bool save_config) {
 	refcnt::Swstr_list errors;
 	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(),
 #ifndef DDO_NOT_USE_QT
@@ -112,6 +113,21 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 
 	// wait for filters to finish, or user to close the app
 	gFilter_Executor->Terminate(TRUE);
+
+
+	if (save_config) {
+		std::wcout << L"Saving configuration...";
+		errors = refcnt::Swstr_list{};
+		const HRESULT rc = configuration->Save_To_File(nullptr, errors.get());
+		errors.for_each([](auto str) { std::wcerr << str << std::endl; });
+		if (!Succeeded(S_OK)) {
+			std::wcerr << std::endl << L"Failed to save the configruation!" << std::endl;
+			return __LINE__;
+		}
+		else
+			std::wcout << L" saved." << std::endl;
+	}
+	
 
 	return 0;
 }
@@ -281,7 +297,7 @@ int POST_Check(int argc, char** argv) {
 		std::wcout << L"Usage: ";
 		if ((argc > 0) && (argv[0]) && (argv[0][0])) std::wcout << argv[0]; //the standard does permit zero argc and empty argv[0]
 		else std::wcout << L"console";
-		std::wcout << " filename [" << dsOptimize_Switch << "filter_index,parameters_name[ " <<dsSolver_Switch <<"generations[,population[,solver_GUID]]]]" << std::endl << std::endl;
+		std::wcout << " filename [" << dsOptimize_Switch << "filter_index,parameters_name[ " <<dsSolver_Switch <<"generations[,population[,solver_GUID]]]] [" << Widen_String(dsSave_Config_Switch) << "]" << std::endl << std::endl;
 		std::wcout << L"The filename designates the configuration of an experimental setup. Usually, it is .ini file." << std::endl << std::endl;
 		std::wcout << L"The filter_index starts at zero. parameters_name is a string." << std::endl << std::endl;
 		std::wcout << L"Generations is the maximum number of generations to evolve/computational steps." << std::endl;
@@ -371,15 +387,25 @@ int MainCalling main(int argc, char** argv) {
 			if (OS_rc != 0)
 				return OS_rc;
 		}
-		else {
+		
+		/*else { will have to rework the options later on
 			std::wcerr << L"Stopping, encountered unknown option: " << arg_3 << std::endl;
 			return __LINE__;
 		}
+		*/
 	}
 	
 	//If we have optimized succesfully, then the best parameters are already saved.
 	//Hence, we execute the configuration once more to make the final pass with the best parameters.
 	//Or, we just execute it as if no optimization was asked for.
 
-	return progress.cancelled == 0 ? Execute_Configuration(configuration) : __LINE__;
+	bool save_config = false;
+
+	for (size_t i = 1; i < argc; i++) {
+		if (dsSave_Config_Switch.compare(argv[i]) == 0) {
+			save_config = true;
+			break;
+		}
+	}
+	return progress.cancelled == 0 ? Execute_Configuration(configuration, save_config) : __LINE__;
 }
