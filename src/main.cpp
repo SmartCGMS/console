@@ -407,5 +407,6 @@ int MainCalling main(int argc, char** argv) {
 			break;
 		}
 	}
-	return progress.cancelled == 0 ? Execute_Configuration(configuration, save_config) : __LINE__;
+	const auto result = progress.cancelled == 0 ? Execute_Configuration(configuration, save_config) : __LINE__;
+	return result;	//so that we can nicely set breakpoints to take memory snapshots
 }
