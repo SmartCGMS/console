@@ -408,5 +408,6 @@ int MainCalling main(int argc, char** argv) {
 		}
 	}
 	const auto result = progress.cancelled == 0 ? Execute_Configuration(configuration, save_config) : __LINE__;
+	configuration.reset();	//extraline so that we can take memory snapshot to ease our debugging
 	return result;	//so that we can nicely set breakpoints to take memory snapshots
 }
