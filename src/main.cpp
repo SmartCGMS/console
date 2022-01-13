@@ -36,6 +36,8 @@
  *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
  */
 
+#include "utils.h"
+
 #include "../../common/rtl/scgmsLib.h"
 #include "../../common/rtl/FilterLib.h"
 #include "../../common/rtl/FilesystemLib.h"
@@ -44,16 +46,6 @@
 #include "../../common/rtl/UILib.h"
 #include "../../common/utils/winapi_mapping.h"
 #include "../../common/utils/string_utils.h"
-
- /*
-  *	If you do not need database access, or do not want to use Qt, then
-  *  #define DDO_NOT_USE_QT
-  */
-
-#ifndef DDO_NOT_USE_QT
-	#include "../../common/rtl/qdb_connector.h"
-	#include <QtCore/QCoreApplication>
-#endif
 
 #include <iostream>
 #include <csignal>
@@ -67,32 +59,24 @@
 #endif
 
 
-class CPriority_Guard {
-public:
-	CPriority_Guard() {
-#ifdef _WIN32
-		if (SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS))
-			std::wcout << L"Process priority lowered to BELOW_NORMAL." << std::endl;
-#endif
-	}
-	
-	~CPriority_Guard() {
-#ifdef _WIN32		
-		if (SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS))
-			std::wcout << L"Process priority restored to NORMAL." << std::endl;
-#endif
-	}
-};
-
-
-
-const wchar_t* dsOptimize_Switch = L"/optimize=";
-const wchar_t* dsSolver_Switch = L"/solver=";
-const std::string dsSave_Config_Switch = "/save_configuration";
 
 scgms::SFilter_Executor gFilter_Executor;
 solver::TSolver_Progress progress = solver::Null_Solver_Progress; //so that we can cancel from sigint
 
+
+void MainCalling sighandler(int signo) {
+	// SIGINT should terminate filters; this will eventually terminate whole app
+	if (signo == SIGINT) {
+		std::wcout << std::endl << "Cancelling..." << std::endl;
+
+		progress.cancelled = true;
+
+		if (gFilter_Executor) {
+			scgms::UDevice_Event shut_down_event{ scgms::NDevice_Event_Code::Shut_Down };
+			gFilter_Executor.Execute(std::move(shut_down_event));
+		}
+	}
+}
 
 int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, const bool save_config) {
 	refcnt::Swstr_list errors;
@@ -127,68 +111,16 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		else
 			std::wcout << L" saved." << std::endl;
 	}
-	
+
 
 	return 0;
 }
 
-std::tuple<size_t, size_t, GUID> Get_Solver_Parameters(std::wstring arg_4) {
-	
-	constexpr GUID Halton_Meta_DE = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };
-	constexpr size_t Population_Size = 100;
-	constexpr size_t Generation_Count = 1000;
 
-	std::tuple<size_t, size_t, GUID> result;
-	std::get<0>(result) = Generation_Count;
-	std::get<1>(result) = Population_Size;
-	std::get<2>(result) = Halton_Meta_DE;
 
-	if (arg_4.rfind(dsSolver_Switch, 0) == 0) {
-		arg_4.erase(0, wcslen(dsSolver_Switch));
+int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, std::wstring arg_3, std::wstring arg_4, const std::wstring &arg_5) {
 
-		auto delim_pos = arg_4.find(L',');
-		if (delim_pos != std::wstring::npos) 
-			arg_4[delim_pos] = 0;
-				
-		bool ok;
-		size_t num = static_cast<size_t>(str_2_int(arg_4.c_str(), ok));
-		if (ok) {
-			std::get<0>(result) = num;
 
-			if ((delim_pos != std::wstring::npos) && (delim_pos+1<arg_4.size())) {		
-				arg_4 = arg_4.data() + delim_pos+1;
-				delim_pos = arg_4.find(L',');
-				if (delim_pos != std::wstring::npos)
-					arg_4[delim_pos] = 0;
-
-				size_t num = static_cast<size_t>(str_2_int(arg_4.c_str(), ok));
-				if (ok) {
-					std::get<1>(result) = num;
-
-						if ((delim_pos != std::wstring::npos) && (delim_pos + 1 < arg_4.size())) {
-							arg_4 = arg_4.data() + delim_pos + 1;
-								GUID id = WString_To_GUID(trim(arg_4), ok);
-								if (ok)
-									std::get<2>(result) = id;
-								else
-									std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << GUID_To_WString(std::get<2>(result)) << "." << std::endl;
-						}
-				} else
-					std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << std::get<1>(result) << "." << std::endl;
-			}
-		}
-		else
-			std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << std::get<0>(result) << "." << std::endl;
-
-		
-	}
-
-	return result;
-}
-
-int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, std::wstring arg_3, std::wstring arg_4) {
-
-	
 
 	size_t optimize_filter_index = std::numeric_limits<size_t>::max();
 	std::wstring parameters_name;
@@ -199,8 +131,15 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		optimize_filter_index = str_2_int(arg_3.data() + wcslen(dsOptimize_Switch));
 		parameters_name = &arg_3[delim_pos + 1];
 
+
+		std::vector<std::vector<double>> hints = Load_Hints(arg_5);
+		std::vector<const double*> hints_ptr;
+		for (size_t i = 0; i < hints.size(); i++) {
+			hints_ptr.push_back(hints[i].data());
+		}
+
 		refcnt::Swstr_list errors;
-			
+
 		CPriority_Guard priority_guard;
 
 		HRESULT rc = E_FAIL;
@@ -218,10 +157,12 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 				nullptr
 #endif
 				, nullptr,
-				solver_id, population_size, generation_count, progress, errors);
+				solver_id, population_size, generation_count,
+				hints_ptr.data(), hints_ptr.size(),				
+				progress, errors);
 
 			optimizing_flag = false;
-		});
+			});
 
 		double recent_percentage = std::numeric_limits<double>::quiet_NaN();
 		double recent_fitness = std::numeric_limits<double>::max();
@@ -251,7 +192,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 			optimitizing_thread.join();
 
 		errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
-		
+
 		if (!Succeeded(rc)) {
 			std::wcerr << L"Optimization failed!" << std::endl;
 			return __LINE__;
@@ -261,11 +202,12 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 			std::wcout << L"Parameters were succesfully optimized, saving...";
 			errors = refcnt::Swstr_list{};
 			rc = configuration->Save_To_File(nullptr, errors.get());
-			errors.for_each([](auto str) { std::wcerr << str << std::endl;});
+			errors.for_each([](auto str) { std::wcerr << str << std::endl; });
 			if (!Succeeded(S_OK)) {
 				std::wcerr << std::endl << L"Failed to save optimized parameters!" << std::endl;
 				return __LINE__;
-			} else
+			}
+			else
 				std::wcout << L" saved." << std::endl;
 		}
 
@@ -278,81 +220,6 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 	return 0;
 }
 
-void MainCalling sighandler(int signo) {
-	// SIGINT should terminate filters; this will eventually terminate whole app
-	if (signo == SIGINT) {
-		std::wcout << std::endl << "Cancelling..." << std::endl;
-
-		progress.cancelled = true;
-
-		if (gFilter_Executor) {
-			scgms::UDevice_Event shut_down_event{ scgms::NDevice_Event_Code::Shut_Down };
-			gFilter_Executor.Execute(std::move(shut_down_event));
-		}
-	}
-}
-
-int POST_Check(int argc, char** argv) {
-	if (argc < 2) {
-		std::wcout << L"Usage: ";
-		if ((argc > 0) && (argv[0]) && (argv[0][0])) std::wcout << argv[0]; //the standard does permit zero argc and empty argv[0]
-		else std::wcout << L"console";
-		std::wcout << " filename [" << dsOptimize_Switch << "filter_index,parameters_name[ " <<dsSolver_Switch <<"generations[,population[,solver_GUID]]]] [" << Widen_String(dsSave_Config_Switch) << "]" << std::endl << std::endl;
-		std::wcout << L"The filename designates the configuration of an experimental setup. Usually, it is .ini file." << std::endl << std::endl;
-		std::wcout << L"The filter_index starts at zero. parameters_name is a string." << std::endl << std::endl;
-		std::wcout << L"Generations is the maximum number of generations to evolve/computational steps." << std::endl;
-		std::wcout << L"Population is the population size, when applicable, or 0 to allow entering the solver_id." << std::endl;
-		std::wcout << L"Solver_GUID is solver's id, formatted like {01274B08-F721-42BC-A562-0556714C5685}." << std::endl;
-		std::wcout << L"Make no spaces around the , delimiters." << std::endl;
-		std::wcout << L"Default solver is Halton-driven Meta-Differential Evolution, 1000 generations, 100 population size." << std::endl;
-
-		std::wcout << std::endl << L"Available solvers:" << std::endl;
-
-		
-		for (const auto& solver : scgms::get_solver_descriptors()) 
-			if (!solver.specialized) 
-				std::wcout << GUID_To_WString(solver.id) << " - " << solver.description << std::endl;
-
-		return __LINE__;
-	}
-
-	if (!scgms::is_scgms_loaded()) {
-		std::wcerr << L"SmartCGMS library is not loaded!" << std::endl;
-		return __LINE__;
-	}
-
-	return 0;
-}
-
-std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv) {
-	std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> result;
-
-	//Let's try to load the configuration file
-	const std::wstring config_filepath = argc > 1 ? std::wstring{ argv[1], argv[1] + strlen(argv[1]) } : std::wstring{};
-	scgms::SPersistent_Filter_Chain_Configuration configuration;
-
-	refcnt::Swstr_list errors;
-
-
-	HRESULT rc = E_FAIL;		//asssume the worst
-	if (configuration) {		//and check whether we have constructed the main config container
-		rc = configuration->Load_From_File(config_filepath.c_str(), errors.get());	//and load it if we did
-	}
-	
-	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
-
-	std::get<0>(result) = rc;
-
-	if (Succeeded(rc)) {
-		std::get<1>(result) = std::move(configuration);
-
-		if (rc == S_FALSE)
-			std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
-	} else
-		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;	
-
-	return result;
-}
 
 int MainCalling main(int argc, char** argv) {
 #ifndef DDO_NOT_USE_QT
@@ -383,7 +250,11 @@ int MainCalling main(int argc, char** argv) {
 
 			std::wstring arg_4;
 			if (argc > 3) arg_4 = Widen_Char(argv[3]);
-			OS_rc = Optimize_Configuration(configuration, arg_3, arg_4);
+
+			std::wstring arg_5;
+			if (argc > 4) arg_5 = Widen_Char(argv[4]);
+
+			OS_rc = Optimize_Configuration(configuration, arg_3, arg_4, arg_5);
 			if (OS_rc != 0)
 				return OS_rc;
 		}
