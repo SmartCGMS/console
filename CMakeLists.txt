@@ -4,7 +4,7 @@ SET(PROJ "gpredict3-console")
 
 MESSAGE(STATUS "Configuring console project")
 
-FILE(GLOB SRC_BASE src/*.cpp)
+FILE(GLOB SRC_BASE src/*.cpp src/*.h)
 
 CONFIGURE_COMMON(${PROJ})
 
