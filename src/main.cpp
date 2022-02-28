@@ -167,6 +167,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		double recent_percentage = std::numeric_limits<double>::quiet_NaN();
 		double recent_fitness = std::numeric_limits<double>::max();
 		std::wcout << "Will report progress and best fitness. Optimizing...";
+		std::wcout.flush();
 		while (optimizing_flag) {
 			if (progress.max_progress != 0) {
 				double current_percentage = static_cast<double>(progress.current_progress) / static_cast<double>(progress.max_progress);
@@ -182,6 +183,8 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 						recent_fitness = progress.best_metric;
 						std::wcout << " " << recent_fitness;
 					}
+
+					std::wcout.flush();
 				}
 			}
 
