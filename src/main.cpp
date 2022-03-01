@@ -165,7 +165,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 			});
 
 		double recent_percentage = std::numeric_limits<double>::quiet_NaN();
-		double recent_fitness = std::numeric_limits<double>::max();
+		solver::TFitness recent_fitness = solver::Nan_Fitness;
 		std::wcout << "Will report progress and best fitness. Optimizing...";
 		std::wcout.flush();
 		while (optimizing_flag) {
@@ -179,9 +179,14 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 					recent_percentage = current_percentage;
 					std::wcout << " " << current_percentage << "%...";
 
-					if (recent_fitness > progress.best_metric) {
-						recent_fitness = progress.best_metric;
-						std::wcout << " " << recent_fitness;
+					
+					for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
+						const double tmp_best = progress.best_metric[i];
+						if ((recent_fitness[i] != tmp_best) && (!std::isnan(tmp_best))) {
+							recent_fitness[i] = progress.best_metric[i];
+
+							std::wcout << L' ' << i << L':' << recent_fitness[i];
+						}
 					}
 
 					std::wcout.flush();
