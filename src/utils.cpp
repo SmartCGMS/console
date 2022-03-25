@@ -69,7 +69,7 @@ std::vector<std::vector<double>> Load_Hints(const std::wstring& arg_5) {
 
 	if (arg_5.find_first_of(dsHints_Switch) == 0) {
 		const auto fname = arg_5.substr(wcslen(dsHints_Switch));
-		std::wifstream hints_file{ fname };
+		std::wifstream hints_file{ Narrow_WString(fname) };
 		if (hints_file) {
 			std::wstring line;
 
