@@ -198,14 +198,14 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 			optimitizing_thread.join();
 
 		errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
-
-		if (!Succeeded(rc)) {
-			std::wcerr << L"Optimization failed!" << std::endl;
-			return __LINE__;
-		}
-
+		
 		if (rc == S_OK) {
-			std::wcout << L"Parameters were succesfully optimized, saving...";
+			std::wcout << L"\nResulting fitness:";
+			for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
+				std::wcout << L' ' << i << L':' << progress.best_metric[i];
+			}
+
+			std::wcout << L"\nParameters were succesfully optimized, saving...";
 			errors = refcnt::Swstr_list{};
 			rc = configuration->Save_To_File(nullptr, errors.get());
 			errors.for_each([](auto str) { std::wcerr << str << std::endl; });
@@ -215,6 +215,14 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 			}
 			else
 				std::wcout << L" saved." << std::endl;
+		}
+		else if (rc == S_FALSE) {
+			std::wcerr << L"Solver did not improve the solution." << std::endl;
+			return __LINE__;
+		}
+		else {
+			std::wcerr << L"Optimization failed! Error: " << Describe_Error(rc) << std::endl;
+			return __LINE__;
 		}
 
 	}
