@@ -74,7 +74,7 @@ std::vector<std::vector<double>> Load_Hints(const std::wstring& arg_5) {
 			std::wstring line;
 
 			while (std::getline(hints_file, line)) {
-				bool ok;
+				bool ok = false;
 				if (!line.empty())
 					result.push_back(std::move(str_2_dbls(line.c_str(), ok)));
 
