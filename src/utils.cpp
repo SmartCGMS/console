@@ -205,7 +205,7 @@ std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experime
 		std::get<1>(result) = std::move(configuration);
 
 		if (rc == S_FALSE)
-			std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
+			std::wcerr << L"Warning: some filters were not loaded, or some variables were not set!" << std::endl;
 	} else
 		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;	
 
