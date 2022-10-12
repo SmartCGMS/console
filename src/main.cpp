@@ -240,6 +240,12 @@ int MainCalling main(int argc, char** argv) {
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
 #endif
 
+	if (!scgms::is_scgms_loaded()) {
+		std::wcerr << L"SmartCGMS library is not loaded!" << std::endl;
+		return __LINE__;
+	}
+
+
 	signal(SIGINT, sighandler);
 
 	int OS_rc = POST_Check(argc, argv);
