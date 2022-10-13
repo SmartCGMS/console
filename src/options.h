@@ -52,7 +52,7 @@ enum class NAction : size_t {
 };
 
 
-struct TOptimize_Parameters {	
+struct TOptimize_Parameter {	
 	size_t index = std::numeric_limits<size_t>::max();
 	std::wstring name;
 };
@@ -71,8 +71,9 @@ struct TAction {
 	size_t generation_count = 100;
 	size_t population_size = 1000;
 
-	std::vector<TOptimize_Parameters> parameters_to_optimize;
+	std::vector<TOptimize_Parameter> parameters_to_optimize;
 	std::vector<TVariable> variables;
+	std::vector<std::vector<double>> hints;
 };
 
 TAction Parse_Options(const int argc, const char** argv);

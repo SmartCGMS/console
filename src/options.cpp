@@ -57,14 +57,16 @@ enum class NOption_Index : TOption_Index {
         solver_id,
         generation_count,
         population_size,        
-        save_config
+        save_config,
+        hint,
+        parameters_hint
         };
 
 
 using TOption_Type = decltype(option::Descriptor::type);
 enum class NAction_Type : TOption_Type {
     unused = 0,
-    excute_config,
+    execute_config,
     optimize_config,    
 };
 
@@ -74,16 +76,18 @@ constexpr option::Descriptor Unknown_Option = { static_cast<TOption_Index>(NOpti
 
 constexpr option::Descriptor actExection = { static_cast<TOption_Index>(NOption_Index::action), static_cast<TOption_Type>(NAction_Type::execute_config), "e" , "execute" ,option::Arg::None, "--execute, -e \t\texecutes the configuratin, exclusive to optimize; default action" };
 constexpr option::Descriptor actOptimize = { static_cast<TOption_Index>(NOption_Index::action), static_cast<TOption_Type>(NAction_Type::optimize_config), "o" , "optimize" ,option::Arg::None, "--optimize, -o \t\tperforms optimization instead of execution" };
-constexpr option::Descriptor actSave = { static_cast<TOption_Index>(NOption_Index::save_config), static_cast<TOption_Type>(NAction_Type::unused), "s" , "save" ,option::Arg::None, "--save, -s \t\tsaves the config after execution/optimization" };
-constexpr option::Descriptor actSolver_Id = { static_cast<TOption_Index>(NOption_Index::solver_id), , static_cast<TOption_Type>(NAction_Type::unused), "r" , "solver_id" ,option::Arg::Optional, "--solver_id, -r={solver-guid} \t\tselects the desired solver" };
-constexpr option::Descriptor actGeneration_Count = { static_cast<TOption_Index>(NOption_Index::generation_count), , static_cast<TOption_Type>(NAction_Type::unused), "g" , "generation_count" ,option::Arg::Optional, "--generation_count, -g=sets the maximum number of generations/iterations for the solver" };
-constexpr option::Descriptor actPopulation_Size = { static_cast<TOption_Index>(NOption_Index::population_size), , static_cast<TOption_Type>(NAction_Type::unused), "z" , "population_size" ,option::Arg::Optional, "--population_size, -z=sets the population size/problem stepping for the solver, if applicable" };
+constexpr option::Descriptor actSave = { static_cast<TOption_Index>(NOption_Index::save_config), static_cast<TOption_Type>(NAction_Type::unused), "s" , "save_configuration" ,option::Arg::None, "--save_configuration, -s \t\tsaves the config after execution/optimization" };
+constexpr option::Descriptor actSolver_Id = { static_cast<TOption_Index>(NOption_Index::solver_id), static_cast<TOption_Type>(NAction_Type::unused), "r" , "solver_id" ,option::Arg::Optional, "--solver_id, -r={solver-guid} \t\tselects the desired solver" };
+constexpr option::Descriptor actGeneration_Count = { static_cast<TOption_Index>(NOption_Index::generation_count), static_cast<TOption_Type>(NAction_Type::unused), "g" , "generation_count" ,option::Arg::Optional, "--generation_count, -g=sets the maximum number of generations/iterations for the solver" };
+constexpr option::Descriptor actPopulation_Size = { static_cast<TOption_Index>(NOption_Index::population_size), static_cast<TOption_Type>(NAction_Type::unused), "z" , "population_size" ,option::Arg::Optional, "--population_size, -z=sets the population size/problem stepping for the solver, if applicable" };
 
-constexpr option::Descriptor actParameter = { static_cast<TOption_Index>(NOption_Index::parameter_to_optimize), , static_cast<TOption_Type>(NAction_Type::unused), "p" , "parameter" ,option::Arg::Optional, "--parameter, -p=filter_zero_index,parameter_name - possibly multiple options gives parameters to optimize" };
-constexpr option::Descriptor actVariable = { static_cast<TOption_Index>(NOption_Index::variable), , static_cast<TOption_Type>(NAction_Type::unused), "v" , "variable" ,option::Arg::Optional, "--variable, -v=name:=value sets internal variables to possibly complement operating-system variables" };
+constexpr option::Descriptor actParameter = { static_cast<TOption_Index>(NOption_Index::parameter_to_optimize), static_cast<TOption_Type>(NAction_Type::unused), "p" , "parameter" ,option::Arg::Optional, "--parameter, -p=filter_zero_index,parameter_name - possibly multiple options gives parameters to optimize" };
+constexpr option::Descriptor actVariable = { static_cast<TOption_Index>(NOption_Index::variable), static_cast<TOption_Type>(NAction_Type::unused), "v" , "variable" ,option::Arg::Optional, "--variable, -v=name:=value sets internal variables to possibly complement operating-system variables" };
+constexpr option::Descriptor actHint = { static_cast<TOption_Index>(NOption_Index::hint), static_cast<TOption_Type>(NAction_Type::unused), "h" , "hint" ,option::Arg::Optional, "--hint, -h=file_mask to files containing hints" };
+constexpr option::Descriptor actParameter_Hint = { static_cast<TOption_Index>(NOption_Index::parameters_hint), static_cast<TOption_Type>(NAction_Type::unused), "m" , "parameters_hint" ,option::Arg::Optional, "--parameters_hint, -m=file_mask, but loads single hint from a parameters file" };
 constexpr option::Descriptor Zero_Terminating_Option = { static_cast<TOption_Index>(NOption_Index::invalid), 0, nullptr , nullptr ,option::Arg::None, nullptr };
 
-constexpr std::array<option::Descriptor, 10> option_syntax{ Unknown_Option , actExection, actOptimize, actSave, actSolver_Id, actGeneration_Count, actPopulation_Size, actParameter, actVariable, Zero_Terminating_Option };
+constexpr std::array<option::Descriptor, 12> option_syntax{ Unknown_Option, actExection, actOptimize, actSave, actSolver_Id, actGeneration_Count, actPopulation_Size, actParameter, actVariable, actHint, actParameter_Hint, Zero_Terminating_Option };
 
 
 
@@ -106,7 +110,7 @@ void Show_Help() {
 }
 
 
-TAction Resolve_Parameters(TAction &known_config, const std::vector<option::Option>& options) {
+TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& options) {
     TAction result = known_config;    
 
     //1. common parameters
@@ -135,18 +139,17 @@ TAction Resolve_Parameters(TAction &known_config, const std::vector<option::Opti
                 return result;
             }
             else {
-                result.solver_id = solve_id;
+                result.solver_id = solver_id;
 
                 //id looks good, let's try to resolve it    
                 scgms::TSolver_Descriptor solver_desc = scgms::Null_Solver_Descriptor;
-                ok = scgms::get_model_descriptor_by_id(solver_id, solver_desc);
+                ok = scgms::get_solver_descriptor_by_id(solver_id, solver_desc);
                 if (!ok) {
                     std::wcout << L"Cannot resolve the solver id to a known solver descriptor!" << std::endl;
                     result.action = NAction::failed_configuration;
                     return result;
-                }
-
-                std::wcout << L"Resolved solver id to \"" << result.model_desc.description << std::endl;
+                } else
+                    std::wcout << L"Resolved solver id to \"" << solver_desc.description << std::endl;
             }
         }
 
@@ -155,7 +158,7 @@ TAction Resolve_Parameters(TAction &known_config, const std::vector<option::Opti
         const auto& generation_count_arg = options[static_cast<size_t>(NOption_Index::generation_count)];
         if (generation_count_arg) {
             bool ok = false;
-            const size_t generation_count = str_2_uint(Widen_Char(generation_count_arg), ok);
+            const size_t generation_count = str_2_uint(generation_count_arg.arg, ok);
             if (ok) {
                 result.generation_count = generation_count;
                 std::wcout << L"Generation count set to: " << result.generation_count << std::endl;
@@ -175,7 +178,7 @@ TAction Resolve_Parameters(TAction &known_config, const std::vector<option::Opti
         const auto& population_size_arg = options[static_cast<size_t>(NOption_Index::population_size)];
         if (population_size_arg) {
             bool ok = false;
-            const size_t population_size = str_2_uint(Widen_Char(population_size_arg), ok);
+            const size_t population_size = str_2_uint(population_size_arg.arg, ok);
             if (ok) {
                 result.population_size = population_size;
                 std::wcout << L"Population size set to: " << result.generation_count << std::endl;
@@ -193,10 +196,40 @@ TAction Resolve_Parameters(TAction &known_config, const std::vector<option::Opti
 
 
         //2.4 gather parameters to optimize, must have at least one element
+        for (option::Option* opt = options[static_cast<size_t>(NOption_Index::parameter_to_optimize)]; opt; opt = opt->next()) {
+            
+            bool resolved_ok = false;
+            std::wstring str = Widen_Char(opt->arg);
+            const auto delim_pos = str.find(L",");
+            if (delim_pos != std::wstring::npos) {
+                str[delim_pos] = 0;
+                TOptimize_Parameter param_desc;
+                param_desc.index = str_2_int(str.data(), resolved_ok);
+                if (resolved_ok) {
+                    param_desc.name = str.data()[delim_pos + 1];
+
+                    resolved_ok = param_desc.name.size() > 0;
+                    if (resolved_ok) {
+                        result.parameters_to_optimize.push_back(param_desc);
+                    }
+                }
+            }            
+            
+            if (!resolved_ok) {
+                std::wcout << L"Cannot resolve a parameter to optimize: " << str << std::endl;
+                result.action = NAction::failed_configuration;
+                return result;
+            }
+        }
 
 
         //2.5 gather variables to optimize, can be empty
         
+
+        //2.6 gather hints for the optimization
+
+
+        //2.7 gather hints for the optimization from parameters file
     }
 
 
@@ -213,13 +246,20 @@ TAction Parse_Options(const int argc, const char** argv) {
     result.action = NAction::failed_configuration;
 
     if (argc < 2) {
-        option::printUsage(std::cout, option_syntax.data());
+        Show_Help();
         return result;
     }
 
-    result.config_path = argv[1];
-    const auto effective_argc = argc - 1;
-    const auto effective_argv = argv + 1;
+    result.config_path = Widen_Char(argv[1]);
+    const auto effective_argc = argc -1;
+    const auto effective_argv = argv +1;
+
+
+    if (result.config_path.empty()) {
+        std::wcout << L"Configuration file path cannot be empty!\n";
+        return result;
+    }
+
 
     //declared the required structures for parsing the command line
     option::Stats  stats(option_syntax.data(), effective_argc, effective_argv);
@@ -229,7 +269,7 @@ TAction Parse_Options(const int argc, const char** argv) {
     //1. parse the command line
     if (parse.error()) {
         std::wcout << L"Failed to parse the command line options!" << std::endl;
-        option::printUsage(std::cout, option_syntax.data());
+        Show_Help();
         return result;
     }
 
@@ -243,23 +283,26 @@ TAction Parse_Options(const int argc, const char** argv) {
         
         switch (action_type) {
             case static_cast<TOption_Type>(NAction_Type::optimize_config):
+                result.action = NAction::optimize;
+                break;
+
+            case static_cast<TOption_Type>(NAction_Type::execute_config): 
                 result.action = NAction::execute;
                 break;
 
-            case static_cast<TOption_Type>(NAction_Type::excute_config):   [[fallthrough]]
             default:
-                result.action = NAction::optimize;
-                break;  
+                result.action = NAction::failed_configuration;
+                std::wcout << L"Unknown action code: " << static_cast<size_t>(action_type) << std::endl;
+
+                std::cout << actExection.help << std::endl;
+                std::cout << actOptimize.help << std::endl;
+                return result;                
         }
+     } else
 
-        Resolve_Parameters(result, options);
-    }
-    else {
-        std::wcout << L"Action is required!" << std::endl;
-
-        std::cout << actExection.help << std::endl;
-        std::cout << actOptimize.help << std::endl;
-    }
+     std::wcout << L"Action not specified, will default to execution." << std::endl;
+     result.action = NAction::execute;
+     Resolve_Parameters(result, options);        
 
     return result;
 }
