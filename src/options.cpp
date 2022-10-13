@@ -70,7 +70,7 @@ enum class NAction_Type : TOption_Type {
     optimize_config,    
 };
 
-constexpr option::Descriptor Unknown_Option = { static_cast<TOption_Index>(NOption_Index::unknown), 0, "", "" ,option::Arg::None, "Usage: console3.exe configuration_path [options]\n\n"
+constexpr option::Descriptor Unknown_Option = { static_cast<TOption_Index>(NOption_Index::unknown), static_cast<TOption_Type>(NAction_Type::unused), "", "" ,option::Arg::None, "Usage: console3.exe configuration_path [options]\n\n"
 											"Options:" };
 
 
@@ -85,7 +85,7 @@ constexpr option::Descriptor actParameter = { static_cast<TOption_Index>(NOption
 constexpr option::Descriptor actVariable = { static_cast<TOption_Index>(NOption_Index::variable), static_cast<TOption_Type>(NAction_Type::unused), "v" , "variable" ,option::Arg::Optional, "--variable, -v=name:=value sets internal variables to possibly complement operating-system variables" };
 constexpr option::Descriptor actHint = { static_cast<TOption_Index>(NOption_Index::hint), static_cast<TOption_Type>(NAction_Type::unused), "h" , "hint" ,option::Arg::Optional, "--hint, -h=file_mask to files containing hints" };
 constexpr option::Descriptor actParameter_Hint = { static_cast<TOption_Index>(NOption_Index::parameters_hint), static_cast<TOption_Type>(NAction_Type::unused), "m" , "parameters_hint" ,option::Arg::Optional, "--parameters_hint, -m=file_mask, but loads single hint from a parameters file" };
-constexpr option::Descriptor Zero_Terminating_Option = { static_cast<TOption_Index>(NOption_Index::invalid), 0, nullptr , nullptr ,option::Arg::None, nullptr };
+constexpr option::Descriptor Zero_Terminating_Option = { static_cast<TOption_Index>(NOption_Index::invalid), static_cast<TOption_Type>(NAction_Type::unused), nullptr , nullptr ,option::Arg::None, nullptr };
 
 constexpr std::array<option::Descriptor, 12> option_syntax{ Unknown_Option, actExection, actOptimize, actSave, actSolver_Id, actGeneration_Count, actPopulation_Size, actParameter, actVariable, actHint, actParameter_Hint, Zero_Terminating_Option };
 
@@ -115,7 +115,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 
     //1. common parameters
     const auto& save_config_arg = options[static_cast<size_t>(NOption_Index::save_config)];
-    result.save_config = save_config_arg;
+    result.save_config = static_cast<bool>(save_config_arg);
     
 
     //2. parameters applicable for optimization
@@ -251,8 +251,8 @@ TAction Parse_Options(const int argc, const char** argv) {
     }
 
     result.config_path = Widen_Char(argv[1]);
-    const auto effective_argc = argc -1;
-    const auto effective_argv = argv +1;
+    const auto effective_argc = argc - 2;
+    const auto effective_argv = argv + 2;
 
 
     if (result.config_path.empty()) {
@@ -262,9 +262,9 @@ TAction Parse_Options(const int argc, const char** argv) {
 
 
     //declared the required structures for parsing the command line
-    option::Stats  stats(option_syntax.data(), effective_argc, effective_argv);
+    option::Stats  stats(true, option_syntax.data(), effective_argc, effective_argv);   //stats and parse take true to allow non-switch options
     std::vector<option::Option> options(stats.options_max), buffer(stats.buffer_max);        
-    option::Parser parse(option_syntax.data(), effective_argc, effective_argv, options.data(), buffer.data());
+    option::Parser parse(true, option_syntax.data(), effective_argc, effective_argv, options.data(), buffer.data());
 
     //1. parse the command line
     if (parse.error()) {
@@ -296,13 +296,16 @@ TAction Parse_Options(const int argc, const char** argv) {
 
                 std::cout << actExection.help << std::endl;
                 std::cout << actOptimize.help << std::endl;
-                return result;                
+                break;
         }
-     } else
-
-     std::wcout << L"Action not specified, will default to execution." << std::endl;
-     result.action = NAction::execute;
-     Resolve_Parameters(result, options);        
+    }
+    else {
+        std::wcout << L"Action not specified, will default to execution." << std::endl;
+        result.action = NAction::execute;
+    }
+     
+    if (result.action != NAction::failed_configuration)
+        result = Resolve_Parameters(result, options);        
 
     return result;
 }

@@ -38,6 +38,7 @@
 
 #include "utils.h"
 #include "options.h"
+#include "optimize.h"
 
 #include "../../common/rtl/scgmsLib.h"
 #include "../../common/rtl/FilterLib.h"
@@ -118,124 +119,6 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 }
 
 
-
-int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, std::wstring arg_3, std::wstring arg_4, const std::wstring &arg_5) {
-
-
-
-	size_t optimize_filter_index = std::numeric_limits<size_t>::max();
-	std::wstring parameters_name;
-
-	const auto delim_pos = arg_3.find(L',');
-	if (delim_pos != std::wstring::npos) {
-		arg_3[delim_pos] = 0;
-		optimize_filter_index = str_2_int(arg_3.data() + wcslen(dsOptimize_Switch));
-		parameters_name = &arg_3[delim_pos + 1];
-
-
-		std::vector<std::vector<double>> hints = Load_Hints(arg_5);
-		std::vector<const double*> hints_ptr;
-		for (size_t i = 0; i < hints.size(); i++) {
-			hints_ptr.push_back(hints[i].data());
-		}
-
-		refcnt::Swstr_list errors;
-
-		CPriority_Guard priority_guard;
-
-		HRESULT rc = E_FAIL;
-		std::atomic<bool> optimizing_flag{ true };
-		std::thread optimitizing_thread([&] {
-			//use thread, not async because that could live-lock on a uniprocessor
-
-			auto [generation_count, population_size, solver_id] = Get_Solver_Parameters(arg_4);
-
-			rc = scgms::Optimize_Parameters(configuration,
-				optimize_filter_index, parameters_name.c_str(),
-#ifndef DDO_NOT_USE_QT
-				Setup_Filter_DB_Access
-#else
-				nullptr
-#endif
-				, nullptr,
-				solver_id, population_size, generation_count,
-				hints_ptr.data(), hints_ptr.size(),				
-				Global_Progress, errors);
-
-			optimizing_flag = false;
-			});
-
-		double recent_percentage = std::numeric_limits<double>::quiet_NaN();
-		solver::TFitness recent_fitness = solver::Nan_Fitness;
-		std::wcout << "Will report progress and best fitness. Optimizing...";
-		while (optimizing_flag) {
-			if (Global_Progress.max_progress != 0) {
-				double current_percentage = static_cast<double>(Global_Progress.current_progress) / static_cast<double>(Global_Progress.max_progress);
-				current_percentage = std::trunc(current_percentage * 1000.0);
-				current_percentage *= 0.1;
-				current_percentage = std::min(current_percentage, 100.0);
-
-				if (recent_percentage != current_percentage) {
-					recent_percentage = current_percentage;
-					std::wcout << " " << current_percentage << "%...";
-
-					
-					for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
-						const double tmp_best = Global_Progress.best_metric[i];
-						if ((recent_fitness[i] != tmp_best) && (!std::isnan(tmp_best))) {
-							recent_fitness[i] = Global_Progress.best_metric[i];
-
-							std::wcout << L' ' << i << L':' << recent_fitness[i];
-						}
-					}
-
-				}
-			}
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		}
-
-		if (optimitizing_thread.joinable())
-			optimitizing_thread.join();
-
-		errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
-		
-		if (rc == S_OK) {
-			std::wcout << L"\nResulting fitness:";
-			for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
-				std::wcout << L' ' << i << L':' << Global_Progress.best_metric[i];
-			}
-
-			std::wcout << L"\nParameters were succesfully optimized, saving...";
-			errors = refcnt::Swstr_list{};
-			rc = configuration->Save_To_File(nullptr, errors.get());
-			errors.for_each([](auto str) { std::wcerr << str << std::endl; });
-			if (!Succeeded(S_OK)) {
-				std::wcerr << std::endl << L"Failed to save optimized parameters!" << std::endl;
-				return __LINE__;
-			}
-			else
-				std::wcout << L" saved." << std::endl;
-		}
-		else if (rc == S_FALSE) {
-			std::wcerr << L"Solver did not improve the solution." << std::endl;
-			return __LINE__;
-		}
-		else {
-			std::wcerr << L"Optimization failed! Error: " << Describe_Error(rc) << std::endl;
-			return __LINE__;
-		}
-
-	}
-	else {
-		std::wcerr << L"Optimize specified, but wrong parameters given. Aborting..." << std::endl;
-		return __LINE__;
-	}
-
-	return 0;
-}
-
-
 int MainCalling main(int argc, char** argv) {
 
 	int result = __LINE__;
@@ -265,6 +148,7 @@ int MainCalling main(int argc, char** argv) {
 				
 
 			case NAction::optimize:
+				result = Global_Progress.cancelled == 0 ? Optimize_Configuration(configuration, action_to_do, Global_Progress) : __LINE__;
 				break;
 
 			default:
