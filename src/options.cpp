@@ -129,7 +129,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 std::wcout << L"Malformed solver id!" << std::endl;
                 const auto all_desc = scgms::get_solver_descriptors();
                 if (all_desc.empty()) {
-                    std::wcout << L"Warning! There's no solver descriptor actually available!" << std::endl;
+                    std::wcout << L"Warning! There's no solver descriptor currently available!" << std::endl;
                 }
                 else
                     std::wcout << L"Pass an id like this " << GUID_To_WString(all_desc[0].id) << std::endl;
@@ -149,7 +149,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                     result.action = NAction::failed_configuration;
                     return result;
                 } else
-                    std::wcout << L"Resolved solver id to \"" << solver_desc.description << std::endl;
+                    std::wcout << L"Resolved solver id to \"" << solver_desc.description << L"\"\n";
             }
         }
 
@@ -181,7 +181,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
             const size_t population_size = str_2_uint(population_size_arg.arg, ok);
             if (ok) {
                 result.population_size = population_size;
-                std::wcout << L"Population size set to: " << result.generation_count << std::endl;
+                std::wcout << L"Population size set to: " << result.population_size << std::endl;
             }
             else {
                 std::wcout << L"Cannot resolve population size to a non-negative number!" << std::endl;
@@ -206,7 +206,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 TOptimize_Parameter param_desc;
                 param_desc.index = str_2_int(str.data(), resolved_ok);
                 if (resolved_ok) {
-                    param_desc.name = str.data()[delim_pos + 1];
+                    param_desc.name = str.data() + delim_pos + 1;
 
                     resolved_ok = param_desc.name.size() > 0;
                     if (resolved_ok) {

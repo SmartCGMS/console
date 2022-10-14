@@ -45,10 +45,20 @@
 
 int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, const TAction& action, solver::TSolver_Progress& progress) {
 
+	const size_t optimize_param_count = action.parameters_to_optimize.size();
+	if (optimize_param_count < 1) {
+		std::wcout << L"Have no parameters to optimize!\n";
+		return __LINE__;
+	}
 
 
-	size_t optimize_filter_index = std::numeric_limits<size_t>::max();
-	std::wstring parameters_name;
+	std::vector<size_t> optimize_param_indices;
+	std::vector<const wchar_t*> optimize_param_names;
+
+	for (const auto& param : action.parameters_to_optimize) {
+		optimize_param_indices.push_back(param.index);
+		optimize_param_names.push_back(param.name.c_str());
+	}
 
 	std::vector<const double*> hints_ptr;
 	for (size_t i = 0; i < action.hints.size(); i++) {
@@ -65,7 +75,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		//use thread, not async because that could live-lock on a uniprocessor
 
 		rc = scgms::Optimize_Parameters(configuration,
-			optimize_filter_index, parameters_name.c_str(),
+			optimize_param_indices.data(), optimize_param_names.data(), optimize_param_count,
 #ifndef DDO_NOT_USE_QT
 			Setup_Filter_DB_Access
 #else
@@ -80,7 +90,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		});
 
 	double recent_percentage = std::numeric_limits<double>::quiet_NaN();
-	solver::TFitness recent_fitness = solver::Nan_Fitness;
+	solver::TFitness recent_fitness = solver::Max_Fitness;
 	std::wcout << "Will report progress and best fitness. Optimizing...";
 	while (optimizing_flag) {
 		if (progress.max_progress != 0) {
@@ -96,10 +106,10 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 					
 				for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
 					const double tmp_best = progress.best_metric[i];
-					if ((recent_fitness[i] != tmp_best) && (!std::isnan(tmp_best))) {
-						recent_fitness[i] = progress.best_metric[i];
+					if ((recent_fitness[i] > tmp_best) && (!std::isnan(tmp_best))) {
+						recent_fitness[i] = tmp_best;
 
-						std::wcout << L' ' << i << L':' << recent_fitness[i];
+						std::wcout << L' ' << i << L':' << tmp_best;
 					}
 				}
 
