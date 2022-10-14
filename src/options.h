@@ -63,7 +63,7 @@ struct TVariable {
 };
 
 struct TAction {
-	NAction action;								//what to do
+	NAction action = NAction::failed_configuration;								//what to do
 
 	std::wstring config_path;
 	bool save_config = false;
@@ -73,7 +73,9 @@ struct TAction {
 
 	std::vector<TOptimize_Parameter> parameters_to_optimize;
 	std::vector<TVariable> variables;
-	std::vector<std::vector<double>> hints;
+	
+	std::vector<std::wstring> hints_to_load;				//may include wild card
+	std::vector<std::wstring> hinting_parameters_to_load;			//may include wild card
 };
 
 TAction Parse_Options(const int argc, const char** argv);

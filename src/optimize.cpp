@@ -47,7 +47,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 
 	const size_t optimize_param_count = action.parameters_to_optimize.size();
 	if (optimize_param_count < 1) {
-		std::wcout << L"Have no parameters to optimize!\n";
+		std::wcerr << L"Have no parameters to optimize!\n";
 		return __LINE__;
 	}
 
@@ -60,10 +60,22 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		optimize_param_names.push_back(param.name.c_str());
 	}
 
+
+	const auto [hint_rc, expected_param_size] = Count_Parameters_Size(configuration, action.parameters_to_optimize);
+	if (hint_rc != S_OK)
+		return __LINE__;
+	std::vector<std::vector<double>> hints;
+	if (!Load_Hints(action.hints_to_load, expected_param_size, false, hints))	//load hints
+		return __LINE__;
+
+	if (!Load_Hints(action.hinting_parameters_to_load, expected_param_size, true, hints))	//load parameters
+		return __LINE__;
+
 	std::vector<const double*> hints_ptr;
-	for (size_t i = 0; i < action.hints.size(); i++) {
-		hints_ptr.push_back(action.hints[i].data());
+	for (size_t i = 0; i < hints.size(); i++) {
+		hints_ptr.push_back(hints[i].data());
 	}
+	
 
 	refcnt::Swstr_list errors;
 

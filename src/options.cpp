@@ -110,6 +110,20 @@ void Show_Help() {
 }
 
 
+std::vector<std::wstring> Gather_Values(const NOption_Index idx, std::vector<option::Option>& options) {
+    std::vector<std::wstring> result;
+
+    for (option::Option* opt = options[static_cast<size_t>(idx)]; opt; opt = opt->next()) {
+        const auto a = opt->arg;
+        if ((a == nullptr) || (*a == 0))
+            std::wcerr << "Detected empty value for parameter " << opt->name <<".\n";
+        else
+            result.push_back(Widen_Char(a));
+    }
+
+    return result;
+}
+
 TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& options) {
     TAction result = known_config;    
 
@@ -126,7 +140,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
             bool ok = false;
             const GUID solver_id = WString_To_GUID(Widen_Char(solver_id_arg.arg), ok);
             if (!ok) {
-                std::wcout << L"Malformed solver id!" << std::endl;
+                std::wcerr << L"Malformed solver id!" << std::endl;
                 const auto all_desc = scgms::get_solver_descriptors();
                 if (all_desc.empty()) {
                     std::wcout << L"Warning! There's no solver descriptor currently available!" << std::endl;
@@ -145,11 +159,12 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 scgms::TSolver_Descriptor solver_desc = scgms::Null_Solver_Descriptor;
                 ok = scgms::get_solver_descriptor_by_id(solver_id, solver_desc);
                 if (!ok) {
-                    std::wcout << L"Cannot resolve the solver id to a known solver descriptor!" << std::endl;
+                    std::wcerr << L"Cannot resolve the solver id to a known solver descriptor!" << std::endl;
                     result.action = NAction::failed_configuration;
                     return result;
-                } else
-                    std::wcout << L"Resolved solver id to \"" << solver_desc.description << L"\"\n";
+                }
+                else
+                    std::wcout << L"Resolved solver id to: " << solver_desc.description << std::endl;
             }
         }
 
@@ -164,7 +179,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 std::wcout << L"Generation count set to: " << result.generation_count << std::endl;
             }
             else {
-                std::wcout << L"Cannot resolve generation count to a non-negative number!" << std::endl;
+                std::wcerr << L"Cannot resolve generation count to a non-negative number!" << std::endl;
                 result.action = NAction::failed_configuration;
                 return result;
             }
@@ -184,7 +199,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 std::wcout << L"Population size set to: " << result.population_size << std::endl;
             }
             else {
-                std::wcout << L"Cannot resolve population size to a non-negative number!" << std::endl;
+                std::wcerr << L"Cannot resolve population size to a non-negative number!" << std::endl;
                 result.action = NAction::failed_configuration;
                 return result;
             }
@@ -216,7 +231,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
             }            
             
             if (!resolved_ok) {
-                std::wcout << L"Cannot resolve a parameter to optimize: " << str << std::endl;
+                std::wcerr << L"Cannot resolve a parameter to optimize: " << str << std::endl;
                 result.action = NAction::failed_configuration;
                 return result;
             }
@@ -224,12 +239,36 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 
 
         //2.5 gather variables to optimize, can be empty
-        
+        std::vector<std::wstring> vars = Gather_Values(NOption_Index::variable, options);
+        for (auto& var_str : vars) {
+            
+            bool resolved_ok = false;
+            const auto delim_pos = var_str.find(L":=");
+            if (delim_pos != std::wstring::npos) {
+                var_str[delim_pos] = 0;
+
+                TVariable var_to_set;
+                var_to_set.name = var_str.c_str();;
+                var_to_set.value = var_str.data() + delim_pos + 2;
+
+                resolved_ok = !var_to_set.name.empty() && var_to_set.value.empty();
+                if (resolved_ok)
+                    result.variables.push_back(var_to_set);
+            }
+
+            if (!resolved_ok) {
+                std::wcerr << L"Malformed variable parameter: " << var_str << std::endl;
+                result.action = NAction::failed_configuration;
+                return result;
+            }
+        }
 
         //2.6 gather hints for the optimization
+        result.hints_to_load = Gather_Values(NOption_Index::hint, options);
 
 
         //2.7 gather hints for the optimization from parameters file
+        result.hinting_parameters_to_load = Gather_Values(NOption_Index::parameters_hint, options);
     }
 
 
@@ -256,7 +295,7 @@ TAction Parse_Options(const int argc, const char** argv) {
 
 
     if (result.config_path.empty()) {
-        std::wcout << L"Configuration file path cannot be empty!\n";
+        std::wcerr << L"Configuration file path cannot be empty!\n";
         return result;
     }
 
@@ -268,7 +307,7 @@ TAction Parse_Options(const int argc, const char** argv) {
 
     //1. parse the command line
     if (parse.error()) {
-        std::wcout << L"Failed to parse the command line options!" << std::endl;
+        std::wcerr << L"Failed to parse the command line options!" << std::endl;
         Show_Help();
         return result;
     }
@@ -292,7 +331,7 @@ TAction Parse_Options(const int argc, const char** argv) {
 
             default:
                 result.action = NAction::failed_configuration;
-                std::wcout << L"Unknown action code: " << static_cast<size_t>(action_type) << std::endl;
+                std::wcerr << L"Unknown action code: " << static_cast<size_t>(action_type) << std::endl;
 
                 std::cout << actExection.help << std::endl;
                 std::cout << actOptimize.help << std::endl;

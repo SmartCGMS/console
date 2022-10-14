@@ -136,7 +136,7 @@ int MainCalling main(int argc, char** argv) {
 
 	TAction action_to_do = Parse_Options(argc, const_cast<const char**> (argv));
 	if (action_to_do.action != NAction::failed_configuration) {
-		auto [rc, configuration] = Load_Experimental_Setup(argc, argv);
+		auto [rc, configuration] = Load_Experimental_Setup(argc, argv, action_to_do.variables);
 		if (!Succeeded(rc))
 			return __LINE__;
 

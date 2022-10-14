@@ -36,6 +36,8 @@
  *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
  */
 
+#include "options.h"
+
 #include "../../common/rtl/scgmsLib.h"
 #include "../../common/rtl/FilterLib.h"
 #include "../../common/rtl/FilesystemLib.h"
@@ -75,5 +77,7 @@ public:
 	~CPriority_Guard();
 };
 
-std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv);
-std::vector<std::vector<double>> Load_Hints(const std::wstring& hint_path);
+std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv, const std::vector<TVariable> &variables);
+bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t parameters_file_type, const bool parameters_file, std::vector<std::vector<double>>& hints_container); //paths may include wildcard
+
+std::tuple<HRESULT, size_t> Count_Parameters_Size(scgms::SPersistent_Filter_Chain_Configuration& configuration, const std::vector<TOptimize_Parameter>& parameters);
