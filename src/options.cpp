@@ -152,20 +152,24 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 result.action = NAction::failed_configuration;
                 return result;
             }
-            else {
+            else 
                 result.solver_id = solver_id;
+        }
+        else
+            std::wcout << "Solver ID not set, will use the default one. ";
 
-                //id looks good, let's try to resolve it    
-                scgms::TSolver_Descriptor solver_desc = scgms::Null_Solver_Descriptor;
-                ok = scgms::get_solver_descriptor_by_id(solver_id, solver_desc);
-                if (!ok) {
-                    std::wcerr << L"Cannot resolve the solver id to a known solver descriptor!" << std::endl;
-                    result.action = NAction::failed_configuration;
-                    return result;
-                }
-                else
-                    std::wcout << L"Resolved solver id to: " << solver_desc.description << std::endl;
+
+        {
+            //id looks good, let's try to resolve it    
+            scgms::TSolver_Descriptor solver_desc = scgms::Null_Solver_Descriptor;
+            const bool ok = scgms::get_solver_descriptor_by_id(result.solver_id, solver_desc);
+            if (!ok) {
+                std::wcerr << L"Cannot resolve the solver id to a known solver descriptor!" << std::endl;
+                result.action = NAction::failed_configuration;
+                return result;
             }
+            else
+                std::wcout << L"Resolved solver id to: " << solver_desc.description << std::endl;            
         }
 
 

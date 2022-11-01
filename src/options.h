@@ -68,7 +68,7 @@ struct TAction {
 	std::wstring config_path;
 	bool save_config = false;
 	GUID solver_id = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };	//Halton MetaDE
-	size_t generation_count = 100;
+	size_t generation_count = 96;	//number of CPU cores divisible by 4, 8 and 16 and 32
 	size_t population_size = 1000;
 
 	std::vector<TOptimize_Parameter> parameters_to_optimize;
