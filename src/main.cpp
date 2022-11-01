@@ -37,6 +37,8 @@
  */
 
 #include "utils.h"
+#include "options.h"
+#include "optimize.h"
 
 #include "../../common/rtl/scgmsLib.h"
 #include "../../common/rtl/FilterLib.h"
@@ -60,8 +62,8 @@
 
 
 
-scgms::SFilter_Executor gFilter_Executor;
-solver::TSolver_Progress progress = solver::Null_Solver_Progress; //so that we can cancel from sigint
+scgms::SFilter_Executor Global_Filter_Executor;
+solver::TSolver_Progress Global_Progress = solver::Null_Solver_Progress; //so that we can cancel from sigint
 
 
 void MainCalling sighandler(int signo) {
@@ -69,18 +71,18 @@ void MainCalling sighandler(int signo) {
 	if (signo == SIGINT) {
 		std::wcout << std::endl << "Cancelling..." << std::endl;
 
-		progress.cancelled = true;
+		Global_Progress.cancelled = TRUE;
 
-		if (gFilter_Executor) {
+		if (Global_Filter_Executor) {
 			scgms::UDevice_Event shut_down_event{ scgms::NDevice_Event_Code::Shut_Down };
-			gFilter_Executor.Execute(std::move(shut_down_event));
+			Global_Filter_Executor.Execute(std::move(shut_down_event));
 		}
 	}
 }
 
 int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, const bool save_config) {
 	refcnt::Swstr_list errors;
-	gFilter_Executor = scgms::SFilter_Executor{ configuration.get(),
+	Global_Filter_Executor = scgms::SFilter_Executor{ configuration.get(),
 #ifndef DDO_NOT_USE_QT
 		Setup_Filter_DB_Access
 #else
@@ -89,14 +91,14 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		,  nullptr, errors };
 	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
 
-	if (!gFilter_Executor) {
+	if (!Global_Filter_Executor) {
 		std::wcerr << L"Could not execute the filters!" << std::endl;
 		return __LINE__;
 	}
 
 
 	// wait for filters to finish, or user to close the app
-	gFilter_Executor->Terminate(TRUE);
+	Global_Filter_Executor->Terminate(TRUE);
 
 
 	if (save_config) {
@@ -116,143 +118,54 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 	return 0;
 }
 
-
-
-int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, std::wstring arg_3, std::wstring arg_4, const std::wstring &arg_5) {
-
-
-
-	size_t optimize_filter_index = std::numeric_limits<size_t>::max();
-	std::wstring parameters_name;
-
-	const auto delim_pos = arg_3.find(L',');
-	if (delim_pos != std::wstring::npos) {
-		arg_3[delim_pos] = 0;
-		optimize_filter_index = str_2_int(arg_3.data() + wcslen(dsOptimize_Switch));
-		parameters_name = &arg_3[delim_pos + 1];
-
-
-		std::vector<std::vector<double>> hints = Load_Hints(arg_5);
-		std::vector<const double*> hints_ptr;
-		for (size_t i = 0; i < hints.size(); i++) {
-			hints_ptr.push_back(hints[i].data());
-		}
-
-		refcnt::Swstr_list errors;
-
-		CPriority_Guard priority_guard;
-
-		HRESULT rc = E_FAIL;
-		std::atomic<bool> optimizing_flag{ true };
-		std::thread optimitizing_thread([&] {
-			//use thread, not async because that could live-lock on a uniprocessor
-
-			auto [generation_count, population_size, solver_id] = Get_Solver_Parameters(arg_4);
-
-			rc = scgms::Optimize_Parameters(configuration,
-				optimize_filter_index, parameters_name.c_str(),
-#ifndef DDO_NOT_USE_QT
-				Setup_Filter_DB_Access
-#else
-				nullptr
-#endif
-				, nullptr,
-				solver_id, population_size, generation_count,
-				hints_ptr.data(), hints_ptr.size(),				
-				progress, errors);
-
-			optimizing_flag = false;
-			});
-
-		double recent_percentage = std::numeric_limits<double>::quiet_NaN();
-		solver::TFitness recent_fitness = solver::Nan_Fitness;
-		std::wcout << "Will report progress and best fitness. Optimizing...";
-		std::wcout.flush();
-		while (optimizing_flag) {
-			if (progress.max_progress != 0) {
-				double current_percentage = static_cast<double>(progress.current_progress) / static_cast<double>(progress.max_progress);
-				current_percentage = std::trunc(current_percentage * 1000.0);
-				current_percentage *= 0.1;
-				current_percentage = std::min(current_percentage, 100.0);
-
-				if (recent_percentage != current_percentage) {
-					recent_percentage = current_percentage;
-					std::wcout << " " << current_percentage << "%...";
-
-					
-					for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
-						const double tmp_best = progress.best_metric[i];
-						if ((recent_fitness[i] != tmp_best) && (!std::isnan(tmp_best))) {
-							recent_fitness[i] = progress.best_metric[i];
-
-							std::wcout << L' ' << i << L':' << recent_fitness[i];
-						}
-					}
-
-					std::wcout.flush();
-				}
-			}
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		}
-
-		if (optimitizing_thread.joinable())
-			optimitizing_thread.join();
-
-		errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
-		
-		if (rc == S_OK) {
-			std::wcout << L"\nResulting fitness:";
-			for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
-				std::wcout << L' ' << i << L':' << progress.best_metric[i];
-			}
-
-			std::wcout << L"\nParameters were succesfully optimized, saving...";
-			errors = refcnt::Swstr_list{};
-			rc = configuration->Save_To_File(nullptr, errors.get());
-			errors.for_each([](auto str) { std::wcerr << str << std::endl; });
-			if (!Succeeded(S_OK)) {
-				std::wcerr << std::endl << L"Failed to save optimized parameters!" << std::endl;
-				return __LINE__;
-			}
-			else
-				std::wcout << L" saved." << std::endl;
-		}
-		else if (rc == S_FALSE) {
-			std::wcerr << L"Solver did not improve the solution." << std::endl;
-			return __LINE__;
-		}
-		else {
-			std::wcerr << L"Optimization failed! Error: " << Describe_Error(rc) << std::endl;
-			return __LINE__;
-		}
-
-	}
-	else {
-		std::wcerr << L"Optimize specified, but wrong parameters given. Aborting..." << std::endl;
-		return __LINE__;
-	}
-
-	return 0;
-}
-
-
 int MainCalling main(int argc, char** argv) {
+
+	int result = __LINE__;
+
 #ifndef DDO_NOT_USE_QT
 	QCoreApplication app{ argc, argv };	//needed as we expose qdb connector that uses Qt
 #endif
 
+	if (!scgms::is_scgms_loaded()) {
+		std::wcerr << L"SmartCGMS library is not loaded!" << std::endl;
+		return __LINE__;
+	}
+
 	signal(SIGINT, sighandler);
 
-	int OS_rc = POST_Check(argc, argv);
-	if (OS_rc != 0) 
-		return OS_rc;
-	
-	auto [rc, configuration] = Load_Experimental_Setup(argc, argv);
-	if (!Succeeded(rc))
-		return __LINE__;
-	
+	TAction action_to_do = Parse_Options(argc, const_cast<const char**> (argv));
+	if (action_to_do.action != NAction::failed_configuration) {
+		auto [rc, configuration] = Load_Experimental_Setup(argc, argv, action_to_do.variables);
+		if (!Succeeded(rc))
+			return __LINE__;
 
+
+		switch (action_to_do.action) {
+			case NAction::execute:
+				result = Global_Progress.cancelled == 0 ? Execute_Configuration(configuration, action_to_do.save_config) : __LINE__;
+				break;
+				
+
+			case NAction::optimize:
+				result = Global_Progress.cancelled == 0 ? Optimize_Configuration(configuration, action_to_do, Global_Progress) : __LINE__;
+				break;
+
+			default:
+				std::wcout << L"Not implemented action requested! Action code: " << static_cast<size_t>(action_to_do.action) << std::endl;
+				return __LINE__;
+		}
+
+
+		configuration.reset();	//extraline so that we can take memory snapshot to ease our debugging
+	}
+
+	
+	return result;	//so that we can nicely set breakpoints to take memory snapshots				
+}
+
+	
+	
+/*
 	//Check if we will optimize	
 	if (argc > 2) {
 		std::wstring arg_3{ Widen_Char(argv[2]) };
@@ -280,7 +193,7 @@ int MainCalling main(int argc, char** argv) {
 			return __LINE__;
 		}
 		*/
-	}
+/*	}
 	
 	//If we have optimized succesfully, then the best parameters are already saved.
 	//Hence, we execute the configuration once more to make the final pass with the best parameters.
@@ -294,7 +207,7 @@ int MainCalling main(int argc, char** argv) {
 			break;
 		}
 	}
-	const auto result = progress.cancelled == 0 ? Execute_Configuration(configuration, save_config) : __LINE__;
-	configuration.reset();	//extraline so that we can take memory snapshot to ease our debugging
-	return result;	//so that we can nicely set breakpoints to take memory snapshots
+	
 }
+
+*/

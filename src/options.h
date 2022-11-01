@@ -36,48 +36,47 @@
  *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
  */
 
-#include "options.h"
 
-#include "../../common/rtl/scgmsLib.h"
-#include "../../common/rtl/FilterLib.h"
+#pragma once
+
 #include "../../common/rtl/FilesystemLib.h"
-#include "../../common/rtl/referencedImpl.h"
-#include "../../common/rtl/SolverLib.h"
-#include "../../common/rtl/UILib.h"
-#include "../../common/utils/winapi_mapping.h"
-
- 
-#include <iostream>
-#include <csignal>
-#include <thread>
-#include <climits>
-#include <chrono>
-#include <cmath>
-
-#ifdef _WIN32
-	#include <Windows.h>
-#endif
-
- /*
-  *	If you do not need database access, or do not want to use Qt, then
-  *  #define DDO_NOT_USE_QT
-  */
-
-#ifndef DDO_NOT_USE_QT
-	#include "../../common/rtl/qdb_connector.h"
-	#include <QtCore/QCoreApplication>
-#endif
+#include "../../common/iface/UIIface.h"
 
 
+#include <vector>
 
-
-class CPriority_Guard {
-public:
-	CPriority_Guard();	
-	~CPriority_Guard();
+enum class NAction : size_t {
+	failed_configuration,
+	execute,
+	optimize
 };
 
-std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv, const std::vector<TVariable> &variables);
-bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t parameters_file_type, const bool parameters_file, std::vector<std::vector<double>>& hints_container); //paths may include wildcard
 
-std::tuple<HRESULT, size_t> Count_Parameters_Size(scgms::SPersistent_Filter_Chain_Configuration& configuration, const std::vector<TOptimize_Parameter>& parameters);
+struct TOptimize_Parameter {	
+	size_t index = std::numeric_limits<size_t>::max();
+	std::wstring name;
+};
+
+
+struct TVariable {
+	std::wstring name, value;
+};
+
+struct TAction {
+	NAction action = NAction::failed_configuration;								//what to do
+
+	std::wstring config_path;
+	bool save_config = false;
+	GUID solver_id = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };	//Halton MetaDE
+	size_t generation_count = 100;
+	size_t population_size = 1000;
+
+	std::vector<TOptimize_Parameter> parameters_to_optimize;
+	std::vector<TVariable> variables;
+	
+	std::vector<std::wstring> hints_to_load;				//may include wild card
+	std::vector<std::wstring> hinting_parameters_to_load;			//may include wild card
+};
+
+TAction Parse_Options(const int argc, const char** argv);
+void Show_Help();

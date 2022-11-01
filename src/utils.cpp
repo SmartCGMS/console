@@ -59,130 +59,103 @@ CPriority_Guard::~CPriority_Guard() {
 
 
 
-const wchar_t* dsOptimize_Switch = L"/optimize=";
-const wchar_t* dsSolver_Switch = L"/solver=";
-const wchar_t* dsHints_Switch = L"/hints=";
-const std::string dsSave_Config_Switch = "/save_configuration";
+void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
+	std::wifstream hints_file{ hint_path };
+	if (hints_file) {
+		std::wstring line;
 
-std::vector<std::vector<double>> Load_Hints(const std::wstring& arg_5) {
-	std::vector<std::vector<double>> result;
+		const size_t initial_hint_count = hints_container.size();
 
-	if (arg_5.find_first_of(dsHints_Switch) == 0) {
-		const auto fname = arg_5.substr(wcslen(dsHints_Switch));
-		std::wifstream hints_file{ Narrow_WString(fname) };
-		if (hints_file) {
-			std::wstring line;
+		size_t line_counter = 0;
+		while (std::getline(hints_file, line)) {
+			line_counter++;
 
-			while (std::getline(hints_file, line)) {
-				bool ok = false;
-				if (!line.empty())
-					result.push_back(std::move(str_2_dbls(line.c_str(), ok)));
+			bool ok = false;
+			if (!line.empty()) {
+				auto loaded_hint = std::move(str_2_dbls(line.c_str(), ok));
 
-				if (!ok)
-					std::wcerr << L"Skipped a possibly corrupted parameters line!" << std::endl;
+				if (parameters_file_type) {
+					//loaded parameters also contain lower and upper bounds, which we need to strip off
+					ok = loaded_hint.size() == 3 * expected_parameters_size;
+					if (ok) {
+						loaded_hint.erase(loaded_hint.begin(), loaded_hint.begin() + expected_parameters_size);	//remove lower bounds
+						loaded_hint.resize(expected_parameters_size);	//trim off upper bounds
+					}
+				} 
+				else
+					ok = (loaded_hint.size() == expected_parameters_size);	
+				
+				if (ok)
+					hints_container.push_back(loaded_hint);
+				else
+					std::wcerr << L"Line no. " << line_counter << " contains a hint with a different than expected size.\n";
 			}
 
+			if (!ok)
+				std::wcerr << L"Skipped a possibly corrupted parameters line!" << std::endl;
+		}
 
-			std::wcout << L"Loaded " << result.size() << " additional hints from " << fname << std::endl;
 
-		} else
-			std::wcerr << L"Cannot open the hints file!" << std::endl;
-	}
+		std::wcout << L"Loaded " << hints_container.size() - initial_hint_count << " additional hints from " << hint_path << std::endl;
 
-	return result;
+	} else
+		std::wcerr << L"Cannot open the hints file!" << std::endl;
+		
 }
 
 
-
-std::tuple<size_t, size_t, GUID> Get_Solver_Parameters(std::wstring arg_4) {
+bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>>& hints_container) {
 	
-	constexpr GUID Halton_Meta_DE = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };
-	constexpr size_t Population_Size = 100;
-	constexpr size_t Generation_Count = 1000;
+	const auto current_dir = filesystem::current_path();
 
-	std::tuple<size_t, size_t, GUID> result;
-	std::get<0>(result) = Generation_Count;
-	std::get<1>(result) = Population_Size;
-	std::get<2>(result) = Halton_Meta_DE;
+	for (const auto& path_mask : hint_paths) {
 
-	if (arg_4.rfind(dsSolver_Switch, 0) == 0) {
-		arg_4.erase(0, wcslen(dsSolver_Switch));
+		const filesystem::path full_path{ Make_Absolute_Path(path_mask, current_dir) };
 
-		auto delim_pos = arg_4.find(L',');
-		if (delim_pos != std::wstring::npos) 
-			arg_4[delim_pos] = 0;
-				
-		bool ok;
-		size_t num = static_cast<size_t>(str_2_int(arg_4.c_str(), ok));
-		if (ok) {
-			std::get<0>(result) = num;
+		//First, we need to ensure that we are not dealing with a uniquely identified file name
+		if (Is_Regular_File_Or_Symlink(path_mask))
+			Load_Hints(path_mask, expected_parameters_size, parameters_file_type, hints_container);
+		else {
+			//if not, then we are asked to enumerate entire directory, may be with a mask
 
-			if ((delim_pos != std::wstring::npos) && (delim_pos+1<arg_4.size())) {		
-				arg_4 = arg_4.data() + delim_pos+1;
-				delim_pos = arg_4.find(L',');
-				if (delim_pos != std::wstring::npos)
-					arg_4[delim_pos] = 0;
+			const auto effective_path = full_path.parent_path();	//note that path_mask may have already contained a different, than current directory!
 
-				size_t num = static_cast<size_t>(str_2_int(arg_4.c_str(), ok));
-				if (ok) {
-					std::get<1>(result) = num;
+			if (Is_Directory(effective_path)) {
 
-						if ((delim_pos != std::wstring::npos) && (delim_pos + 1 < arg_4.size())) {
-							arg_4 = arg_4.data() + delim_pos + 1;
-								GUID id = WString_To_GUID(trim(arg_4), ok);
-								if (ok)
-									std::get<2>(result) = id;
-								else
-									std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << GUID_To_WString(std::get<2>(result)) << "." << std::endl;
-						}
-				} else
-					std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << std::get<1>(result) << "." << std::endl;
+				const std::wstring wildcard = path_mask;
+				constexpr bool case_sensitive =
+#ifdef  _WIN32
+					false
+#else
+					true
+#endif   
+					;
+
+
+				std::error_code ec;
+				if (effective_path.empty() || (!filesystem::exists(effective_path, ec) || ec))
+					return false;
+
+
+
+				for (auto& enumerated_path : filesystem::directory_iterator(effective_path)) {
+					const bool matches_wildcard = Match_Wildcard(enumerated_path.path().filename().wstring(), path_mask, case_sensitive);
+
+					if (matches_wildcard) {
+						if (Is_Regular_File_Or_Symlink(enumerated_path))
+							Load_Hints(enumerated_path.path(), expected_parameters_size, parameters_file_type, hints_container);
+					}
+				}
 			}
 		}
-		else
-			std::wcerr << L"Failed to convert " << arg_4 << L". Using default value " << std::get<0>(result) << "." << std::endl;
-
-		
 	}
-
-	return result;
+	
+	return true;
 }
 
 
 
-int POST_Check(int argc, char** argv) {
-	if (argc < 2) {
-		std::wcout << L"Usage: ";
-		if ((argc > 0) && (argv[0]) && (argv[0][0])) std::wcout << argv[0]; //the standard does permit zero argc and empty argv[0]
-		else std::wcout << L"console";
-		std::wcout << " filename [" << dsOptimize_Switch << "filter_index,parameters_name[ " <<dsSolver_Switch <<"generations[,population[,solver_GUID]]]] [" << Widen_String(dsSave_Config_Switch) << "]" << std::endl << std::endl;
-		std::wcout << L"The filename designates the configuration of an experimental setup. Usually, it is .ini file." << std::endl << std::endl;
-		std::wcout << L"The filter_index starts at zero. parameters_name is a string." << std::endl << std::endl;
-		std::wcout << L"Generations is the maximum number of generations to evolve/computational steps." << std::endl;
-		std::wcout << L"Population is the population size, when applicable, or 0 to allow entering the solver_id." << std::endl;
-		std::wcout << L"Solver_GUID is solver's id, formatted like {01274B08-F721-42BC-A562-0556714C5685}." << std::endl;
-		std::wcout << L"Make no spaces around the , delimiters." << std::endl;
-		std::wcout << L"Default solver is Halton-driven Meta-Differential Evolution, 1000 generations, 100 population size." << std::endl;
-
-		std::wcout << std::endl << L"Available solvers:" << std::endl;
-
-		
-		for (const auto& solver : scgms::get_solver_descriptors()) 
-			if (!solver.specialized) 
-				std::wcout << GUID_To_WString(solver.id) << " - " << solver.description << std::endl;
-
-		return __LINE__;
-	}
-
-	if (!scgms::is_scgms_loaded()) {
-		std::wcerr << L"SmartCGMS library is not loaded!" << std::endl;
-		return __LINE__;
-	}
-
-	return 0;
-}
-
-std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv) {
+std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv, const std::vector<TVariable> &variables) {
 	std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> result;
 
 	//Let's try to load the configuration file
@@ -202,13 +175,52 @@ std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experime
 	std::get<0>(result) = rc;
 
 	if (Succeeded(rc)) {
+
+		//let us set the variables
+		if (!variables.empty()) {
+			for (const auto& var : variables) {
+				rc = configuration->Set_Variable(var.name.c_str(), var.value.c_str());
+				if (!Succeeded(rc)) {
+					std::wcerr << L"Failed to set variable named " << var.name << ", to a value of " << var.value << std::endl;
+
+					std::get<0>(result) = rc;
+				}
+			}
+		}
+
 		std::get<1>(result) = std::move(configuration);
 
 		if (rc == S_FALSE)
-			std::wcerr << L"Warning: some filters were not loaded!" << std::endl;
+			std::wcerr << L"Warning: some filters were not loaded, or some variables were not set!" << std::endl;
 	} else
 		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;	
 
 	return result;
 }
 
+
+
+std::tuple<HRESULT, size_t> Count_Parameters_Size(scgms::SPersistent_Filter_Chain_Configuration& configuration, const std::vector<TOptimize_Parameter>& parameters) {
+
+	size_t count = 0;
+
+	for (size_t i = 0; i < parameters.size(); i++) {
+
+		scgms::SFilter_Configuration_Link configuration_link_parameters = configuration[parameters[i].index];
+
+		if (!configuration_link_parameters) {
+			std::wcout << L"Cannot get configuration link (no. " << i <<") with parameters to optimize.\n";
+			return { E_INVALIDARG, 0 };
+		}
+
+		std::vector<double> lbound, params, ubound;
+		if (!configuration_link_parameters.Read_Parameters(parameters[i].name.c_str(), lbound, params, ubound)) {
+			std::wcout << L"Cannot read parameters configuration link no. " << i << ", with parameters " << parameters[i].name << ".\n";
+			return { E_FAIL, 0 };
+		}
+
+		count += params.size();
+	}
+
+	return { S_OK, count };
+}

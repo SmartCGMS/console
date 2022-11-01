@@ -36,48 +36,10 @@
  *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
  */
 
+
 #include "options.h"
 
-#include "../../common/rtl/scgmsLib.h"
 #include "../../common/rtl/FilterLib.h"
-#include "../../common/rtl/FilesystemLib.h"
-#include "../../common/rtl/referencedImpl.h"
 #include "../../common/rtl/SolverLib.h"
-#include "../../common/rtl/UILib.h"
-#include "../../common/utils/winapi_mapping.h"
 
- 
-#include <iostream>
-#include <csignal>
-#include <thread>
-#include <climits>
-#include <chrono>
-#include <cmath>
-
-#ifdef _WIN32
-	#include <Windows.h>
-#endif
-
- /*
-  *	If you do not need database access, or do not want to use Qt, then
-  *  #define DDO_NOT_USE_QT
-  */
-
-#ifndef DDO_NOT_USE_QT
-	#include "../../common/rtl/qdb_connector.h"
-	#include <QtCore/QCoreApplication>
-#endif
-
-
-
-
-class CPriority_Guard {
-public:
-	CPriority_Guard();	
-	~CPriority_Guard();
-};
-
-std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv, const std::vector<TVariable> &variables);
-bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t parameters_file_type, const bool parameters_file, std::vector<std::vector<double>>& hints_container); //paths may include wildcard
-
-std::tuple<HRESULT, size_t> Count_Parameters_Size(scgms::SPersistent_Filter_Chain_Configuration& configuration, const std::vector<TOptimize_Parameter>& parameters);
+int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, const TAction &action, solver::TSolver_Progress& progress);
