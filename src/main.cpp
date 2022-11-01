@@ -60,8 +60,6 @@
 	#include <Windows.h>
 #endif
 
-
-
 scgms::SFilter_Executor Global_Filter_Executor;
 solver::TSolver_Progress Global_Progress = solver::Null_Solver_Progress; //so that we can cancel from sigint
 
@@ -96,10 +94,8 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		return __LINE__;
 	}
 
-
 	// wait for filters to finish, or user to close the app
 	Global_Filter_Executor->Terminate(TRUE);
-
 
 	if (save_config) {
 		std::wcout << L"Saving configuration...";
@@ -113,7 +109,6 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		else
 			std::wcout << L" saved." << std::endl;
 	}
-
 
 	return 0;
 }
@@ -144,7 +139,6 @@ int MainCalling main(int argc, char** argv) {
 			case NAction::execute:
 				result = Global_Progress.cancelled == 0 ? Execute_Configuration(configuration, action_to_do.save_config) : __LINE__;
 				break;
-				
 
 			case NAction::optimize:
 				result = Global_Progress.cancelled == 0 ? Optimize_Configuration(configuration, action_to_do, Global_Progress) : __LINE__;
@@ -160,11 +154,9 @@ int MainCalling main(int argc, char** argv) {
 	}
 
 	
-	return result;	//so that we can nicely set breakpoints to take memory snapshots				
+	return result;	//so that we can nicely set breakpoints to take memory snapshots
 }
 
-	
-	
 /*
 	//Check if we will optimize	
 	if (argc > 2) {
@@ -187,14 +179,14 @@ int MainCalling main(int argc, char** argv) {
 			if (OS_rc != 0)
 				return OS_rc;
 		}
-		
+
 		/*else { will have to rework the options later on
 			std::wcerr << L"Stopping, encountered unknown option: " << arg_3 << std::endl;
 			return __LINE__;
 		}
 		*/
 /*	}
-	
+
 	//If we have optimized succesfully, then the best parameters are already saved.
 	//Hence, we execute the configuration once more to make the final pass with the best parameters.
 	//Or, we just execute it as if no optimization was asked for.
@@ -209,5 +201,4 @@ int MainCalling main(int argc, char** argv) {
 	}
 	
 }
-
 */
