@@ -108,6 +108,7 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		errors.for_each([](auto str) { std::wcerr << str << std::endl; });
 		if (!Succeeded(S_OK)) {
 			std::wcerr << std::endl << L"Failed to save the configruation!" << std::endl;
+			std::wcerr << std::endl << L"Error 0x" << std::hex << rc << std::dec << ": "  << Describe_Error(rc) << std::endl;
 			return __LINE__;
 		}
 		else
@@ -136,10 +137,11 @@ int MainCalling main(int argc, char** argv) {
 
 	TAction action_to_do = Parse_Options(argc, const_cast<const char**> (argv));
 	if (action_to_do.action != NAction::failed_configuration) {
+				
 		auto [rc, configuration] = Load_Experimental_Setup(argc, argv, action_to_do.variables);
 		if (!Succeeded(rc))
 			return __LINE__;
-
+		
 
 		switch (action_to_do.action) {
 			case NAction::execute:
@@ -152,7 +154,7 @@ int MainCalling main(int argc, char** argv) {
 				break;
 
 			default:
-				std::wcout << L"Not implemented action requested! Action code: " << static_cast<size_t>(action_to_do.action) << std::endl;
+				std::wcout << L"Not-implemented action requested! Action code: " << static_cast<size_t>(action_to_do.action) << std::endl;
 				return __LINE__;
 		}
 
@@ -163,52 +165,3 @@ int MainCalling main(int argc, char** argv) {
 	
 	return result;	//so that we can nicely set breakpoints to take memory snapshots				
 }
-
-	
-	
-/*
-	//Check if we will optimize	
-	if (argc > 2) {
-		std::wstring arg_3{ Widen_Char(argv[2]) };
-		if (arg_3.rfind(dsOptimize_Switch, 0) == 0) {
-
-			//cannot safely optimize, if all filters were not loaded
-			if (rc != S_OK) {
-				std::wcerr << L"Optimization aborted." << std::endl;
-				return __LINE__;
-			}
-
-			std::wstring arg_4;
-			if (argc > 3) arg_4 = Widen_Char(argv[3]);
-
-			std::wstring arg_5;
-			if (argc > 4) arg_5 = Widen_Char(argv[4]);
-
-			OS_rc = Optimize_Configuration(configuration, arg_3, arg_4, arg_5);
-			if (OS_rc != 0)
-				return OS_rc;
-		}
-		
-		/*else { will have to rework the options later on
-			std::wcerr << L"Stopping, encountered unknown option: " << arg_3 << std::endl;
-			return __LINE__;
-		}
-		*/
-/*	}
-	
-	//If we have optimized succesfully, then the best parameters are already saved.
-	//Hence, we execute the configuration once more to make the final pass with the best parameters.
-	//Or, we just execute it as if no optimization was asked for.
-
-	bool save_config = false;
-
-	for (size_t i = 1; i < argc; i++) {
-		if (dsSave_Config_Switch.compare(argv[i]) == 0) {
-			save_config = true;
-			break;
-		}
-	}
-	
-}
-
-*/
