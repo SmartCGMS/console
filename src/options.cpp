@@ -46,8 +46,9 @@
 
 
 #include <iostream>
+#include <typeinfo>
 
-using TOption_Index = decltype(option::Descriptor::index);
+using TOption_Index = std::remove_cv<decltype(option::Descriptor::index)>::type;
 enum class NOption_Index : TOption_Index {
         invalid = 0,    //for zero-terminated padding, must be zero
         unknown, 
@@ -63,14 +64,14 @@ enum class NOption_Index : TOption_Index {
         };
 
 
-using TOption_Type = decltype(option::Descriptor::type);
+using TOption_Type = std::remove_cv<decltype(option::Descriptor::type)>::type;
 enum class NAction_Type : TOption_Type {
     unused = 0,
     execute_config,
     optimize_config,    
 };
 
-constexpr option::Descriptor Unknown_Option = { static_cast<TOption_Index>(NOption_Index::unknown), static_cast<TOption_Type>(NAction_Type::unused), "", "" ,option::Arg::None, "Usage: console3.exe configuration_path [options]\n\n"
+constexpr option::Descriptor Unknown_Option = { static_cast<TOption_Index>(NOption_Index::unknown), static_cast<TOption_Type>(NAction_Type::unused), "", "" , option::Arg::None, "Usage: console3.exe configuration_path [options]\n\n"
 											"Options:" };
 
 

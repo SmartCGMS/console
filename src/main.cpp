@@ -102,7 +102,7 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		errors = refcnt::Swstr_list{};
 		const HRESULT rc = configuration->Save_To_File(nullptr, errors.get());
 		errors.for_each([](auto str) { std::wcerr << str << std::endl; });
-		if (!Succeeded(S_OK)) {
+		if (!Succeeded(rc)) {
 			std::wcerr << std::endl << L"Failed to save the configruation!" << std::endl;
 			return __LINE__;
 		}
@@ -180,10 +180,10 @@ int MainCalling main(int argc, char** argv) {
 				return OS_rc;
 		}
 
-		/*else { will have to rework the options later on
-			std::wcerr << L"Stopping, encountered unknown option: " << arg_3 << std::endl;
-			return __LINE__;
-		}
+		//else { will have to rework the options later on
+		//	std::wcerr << L"Stopping, encountered unknown option: " << arg_3 << std::endl;
+		//	return __LINE__;
+		//}
 		*/
 /*	}
 

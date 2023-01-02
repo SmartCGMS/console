@@ -59,8 +59,8 @@ CPriority_Guard::~CPriority_Guard() {
 
 
 
-void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
-	std::wifstream hints_file{ hint_path };
+void Load_Hints(const filesystem::path &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
+	std::wifstream hints_file{ hint_path.string() };
 	if (hints_file) {
 		std::wstring line;
 
