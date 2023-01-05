@@ -75,7 +75,7 @@ constexpr option::Descriptor Unknown_Option = { static_cast<TOption_Index>(NOpti
 											"Options:" };
 
 
-constexpr option::Descriptor actExection = { static_cast<TOption_Index>(NOption_Index::action), static_cast<TOption_Type>(NAction_Type::execute_config), "e" , "execute" ,option::Arg::None, "--execute, -e \t\texecutes the configuratin, exclusive to optimize; default action" };
+constexpr option::Descriptor actExecute = { static_cast<TOption_Index>(NOption_Index::action), static_cast<TOption_Type>(NAction_Type::execute_config), "e" , "execute" ,option::Arg::None, "--execute, -e \t\texecutes the configuratin, exclusive to optimize; default action" };
 constexpr option::Descriptor actOptimize = { static_cast<TOption_Index>(NOption_Index::action), static_cast<TOption_Type>(NAction_Type::optimize_config), "o" , "optimize" ,option::Arg::None, "--optimize, -o \t\tperforms optimization instead of execution" };
 constexpr option::Descriptor actSave = { static_cast<TOption_Index>(NOption_Index::save_config), static_cast<TOption_Type>(NAction_Type::unused), "s" , "save_configuration" ,option::Arg::None, "--save_configuration, -s \t\tsaves the config after execution/optimization" };
 constexpr option::Descriptor actSolver_Id = { static_cast<TOption_Index>(NOption_Index::solver_id), static_cast<TOption_Type>(NAction_Type::unused), "r" , "solver_id" ,option::Arg::Optional, "--solver_id, -r={solver-guid} \t\tselects the desired solver" };
@@ -88,7 +88,7 @@ constexpr option::Descriptor actHint = { static_cast<TOption_Index>(NOption_Inde
 constexpr option::Descriptor actParameter_Hint = { static_cast<TOption_Index>(NOption_Index::parameters_hint), static_cast<TOption_Type>(NAction_Type::unused), "m" , "parameters_hint" ,option::Arg::Optional, "--parameters_hint, -m=file_mask, but loads single hint from a parameters file" };
 constexpr option::Descriptor Zero_Terminating_Option = { static_cast<TOption_Index>(NOption_Index::invalid), static_cast<TOption_Type>(NAction_Type::unused), nullptr , nullptr ,option::Arg::None, nullptr };
 
-constexpr std::array<option::Descriptor, 12> option_syntax{ Unknown_Option, actExection, actOptimize, actSave, actSolver_Id, actGeneration_Count, actPopulation_Size, actParameter, actVariable, actHint, actParameter_Hint, Zero_Terminating_Option };
+constexpr std::array<option::Descriptor, 12> option_syntax{ Unknown_Option, actExecute, actOptimize, actSave, actSolver_Id, actGeneration_Count, actPopulation_Size, actParameter, actVariable, actHint, actParameter_Hint, Zero_Terminating_Option };
 
 
 
@@ -153,20 +153,24 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 result.action = NAction::failed_configuration;
                 return result;
             }
-            else {
+            else 
                 result.solver_id = solver_id;
+        }
+        else
+            std::wcout << "Solver ID not set, will use the default one. ";
 
-                //id looks good, let's try to resolve it    
-                scgms::TSolver_Descriptor solver_desc = scgms::Null_Solver_Descriptor;
-                ok = scgms::get_solver_descriptor_by_id(solver_id, solver_desc);
-                if (!ok) {
-                    std::wcerr << L"Cannot resolve the solver id to a known solver descriptor!" << std::endl;
-                    result.action = NAction::failed_configuration;
-                    return result;
-                }
-                else
-                    std::wcout << L"Resolved solver id to: " << solver_desc.description << std::endl;
+
+        {
+            //id looks good, let's try to resolve it    
+            scgms::TSolver_Descriptor solver_desc = scgms::Null_Solver_Descriptor;
+            const bool ok = scgms::get_solver_descriptor_by_id(result.solver_id, solver_desc);
+            if (!ok) {
+                std::wcerr << L"Cannot resolve the solver id to a known solver descriptor!" << std::endl;
+                result.action = NAction::failed_configuration;
+                return result;
             }
+            else
+                std::wcout << L"Resolved solver id to: " << solver_desc.description << std::endl;            
         }
 
 
@@ -334,7 +338,7 @@ TAction Parse_Options(const int argc, const char** argv) {
                 result.action = NAction::failed_configuration;
                 std::wcerr << L"Unknown action code: " << static_cast<size_t>(action_type) << std::endl;
 
-                std::cout << actExection.help << std::endl;
+                std::cout << actExecute.help << std::endl;
                 std::cout << actOptimize.help << std::endl;
                 break;
         }

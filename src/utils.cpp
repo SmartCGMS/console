@@ -72,7 +72,7 @@ void Load_Hints(const filesystem::path &hint_path, const size_t expected_paramet
 
 			bool ok = false;
 			if (!line.empty()) {
-				auto loaded_hint = std::move(str_2_dbls(line.c_str(), ok));
+				auto loaded_hint = str_2_dbls(line.c_str(), ok);
 
 				if (parameters_file_type) {
 					//loaded parameters also contain lower and upper bounds, which we need to strip off
