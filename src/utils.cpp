@@ -42,22 +42,6 @@
 
 #include "../../common/utils/string_utils.h"
 
-CPriority_Guard::CPriority_Guard() {
-#ifdef _WIN32
-	if (SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS))
-		std::wcout << L"Process priority lowered to BELOW_NORMAL." << std::endl;
-#endif
-}
-	
-CPriority_Guard::~CPriority_Guard() {
-#ifdef _WIN32		
-	if (SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS))
-		std::wcout << L"Process priority restored to NORMAL." << std::endl;
-#endif
-}
-
-
-
 
 void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
 	std::wifstream hints_file{ hint_path };

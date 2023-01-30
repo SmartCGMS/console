@@ -40,6 +40,7 @@
 
 #include "utils.h"
 #include "../../common/utils/string_utils.h"
+#include "../../common/utils/system_utils.h"
 
 #include <iostream>
 
@@ -164,4 +165,3 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 
 	return 0;
 }
-

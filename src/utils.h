@@ -54,10 +54,6 @@
 #include <chrono>
 #include <cmath>
 
-#ifdef _WIN32
-	#include <Windows.h>
-#endif
-
  /*
   *	If you do not need database access, or do not want to use Qt, then
   *  #define DDO_NOT_USE_QT
@@ -69,13 +65,6 @@
 #endif
 
 
-
-
-class CPriority_Guard {
-public:
-	CPriority_Guard();	
-	~CPriority_Guard();
-};
 
 std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv, const std::vector<TVariable> &variables);
 bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t parameters_file_type, const bool parameters_file, std::vector<std::vector<double>>& hints_container); //paths may include wildcard
