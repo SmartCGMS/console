@@ -46,7 +46,6 @@
 #include "../../common/rtl/UILib.h"
 #include "../../common/utils/winapi_mapping.h"
 
- 
 #include <iostream>
 #include <csignal>
 #include <thread>
@@ -58,23 +57,23 @@
 	#include <Windows.h>
 #endif
 
- /*
-  *	If you do not need database access, or do not want to use Qt, then
-  *  #define DDO_NOT_USE_QT
-  */
+/*
+ * If you do not need database access, or do not want to use Qt, then
+ * #define DDO_NOT_USE_QT
+ */
 
 #ifndef DDO_NOT_USE_QT
 	#include "../../common/rtl/qdb_connector.h"
 	#include <QtCore/QCoreApplication>
 #endif
 
-
-
-
+/*
+ * RAII class for temporarily setting a different scheduling priority during object instance lifetime
+ */
 class CPriority_Guard {
-public:
-	CPriority_Guard();	
-	~CPriority_Guard();
+	public:
+		CPriority_Guard();
+		~CPriority_Guard();
 };
 
 std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv, const std::vector<TVariable> &variables);

@@ -48,18 +48,17 @@ CPriority_Guard::CPriority_Guard() {
 		std::wcout << L"Process priority lowered to BELOW_NORMAL." << std::endl;
 #endif
 }
-	
+
 CPriority_Guard::~CPriority_Guard() {
-#ifdef _WIN32		
+#ifdef _WIN32
 	if (SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS))
 		std::wcout << L"Process priority restored to NORMAL." << std::endl;
 #endif
 }
 
 
+void Load_Hints(const filesystem::path &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {
 
-
-void Load_Hints(const filesystem::path &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
 	std::wifstream hints_file{ hint_path.string() };
 	if (hints_file) {
 		std::wstring line;
@@ -83,8 +82,8 @@ void Load_Hints(const filesystem::path &hint_path, const size_t expected_paramet
 					}
 				} 
 				else
-					ok = (loaded_hint.size() == expected_parameters_size);	
-				
+					ok = (loaded_hint.size() == expected_parameters_size);
+
 				if (ok)
 					hints_container.push_back(loaded_hint);
 				else
@@ -95,17 +94,15 @@ void Load_Hints(const filesystem::path &hint_path, const size_t expected_paramet
 				std::wcerr << L"Skipped a possibly corrupted parameters line!" << std::endl;
 		}
 
-
 		std::wcout << L"Loaded " << hints_container.size() - initial_hint_count << " additional hints from " << hint_path << std::endl;
 
 	} else
 		std::wcerr << L"Cannot open the hints file!" << std::endl;
-		
 }
 
 
 bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>>& hints_container) {
-	
+
 	const auto current_dir = filesystem::current_path();
 
 	for (const auto& path_mask : hint_paths) {
@@ -131,12 +128,9 @@ bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expect
 #endif   
 					;
 
-
 				std::error_code ec;
 				if (effective_path.empty() || (!filesystem::exists(effective_path, ec) || ec))
 					return false;
-
-
 
 				for (auto& enumerated_path : filesystem::directory_iterator(effective_path)) {
 					const bool matches_wildcard = Match_Wildcard(enumerated_path.path().filename().wstring(), path_mask, case_sensitive);
@@ -149,7 +143,7 @@ bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expect
 			}
 		}
 	}
-	
+
 	return true;
 }
 
@@ -164,12 +158,11 @@ std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experime
 
 	refcnt::Swstr_list errors;
 
-
 	HRESULT rc = E_FAIL;		//asssume the worst
 	if (configuration) {		//and check whether we have constructed the main config container
 		rc = configuration->Load_From_File(config_filepath.c_str(), errors.get());	//and load it if we did
 	}
-	
+
 	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
 
 	std::get<0>(result) = rc;
@@ -193,7 +186,7 @@ std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experime
 		if (rc == S_FALSE)
 			std::wcerr << L"Warning: some filters were not loaded, or some variables were not set!" << std::endl;
 	} else
-		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;	
+		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;
 
 	return result;
 }

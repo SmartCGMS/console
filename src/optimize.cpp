@@ -51,7 +51,6 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		return __LINE__;
 	}
 
-
 	std::vector<size_t> optimize_param_indices;
 	std::vector<const wchar_t*> optimize_param_names;
 
@@ -59,7 +58,6 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		optimize_param_indices.push_back(param.index);
 		optimize_param_names.push_back(param.name.c_str());
 	}
-
 
 	const auto [hint_rc, expected_param_size] = Count_Parameters_Size(configuration, action.parameters_to_optimize);
 	if (hint_rc != S_OK)
@@ -75,7 +73,6 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 	for (size_t i = 0; i < hints.size(); i++) {
 		hints_ptr.push_back(hints[i].data());
 	}
-	
 
 	refcnt::Swstr_list errors;
 
@@ -95,11 +92,11 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 #endif
 			, nullptr,
 			action.solver_id, action.population_size, action.generation_count,
-			hints_ptr.data(), hints_ptr.size(),				
+			hints_ptr.data(), hints_ptr.size(),
 			progress, errors);
 
 		optimizing_flag = false;
-		});
+	});
 
 	double recent_percentage = std::numeric_limits<double>::quiet_NaN();
 	solver::TFitness recent_fitness = solver::Max_Fitness;
@@ -115,7 +112,6 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 				recent_percentage = current_percentage;
 				std::wcout << " " << current_percentage << "%...";
 
-					
 				for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
 					const double tmp_best = progress.best_metric[i];
 					if ((recent_fitness[i] > tmp_best) && (!std::isnan(tmp_best))) {
@@ -125,6 +121,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 					}
 				}
 
+				std::wcout.flush();
 			}
 		}
 
@@ -135,7 +132,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		optimitizing_thread.join();
 
 	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
-		
+
 	if (rc == S_OK) {
 		std::wcout << L"\nResulting fitness:";
 		for (size_t i = 0; i < solver::Maximum_Objectives_Count; i++) {
@@ -164,4 +161,3 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 
 	return 0;
 }
-

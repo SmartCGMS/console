@@ -82,11 +82,12 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 	refcnt::Swstr_list errors;
 	Global_Filter_Executor = scgms::SFilter_Executor{ configuration.get(),
 #ifndef DDO_NOT_USE_QT
-		Setup_Filter_DB_Access
+		Setup_Filter_DB_Access,
 #else
-		nullptr
+		nullptr,
 #endif
-		,  nullptr, errors };
+		nullptr, errors
+	};
 	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
 
 	if (!Global_Filter_Executor) {
@@ -135,7 +136,6 @@ int MainCalling main(int argc, char** argv) {
 		auto [rc, configuration] = Load_Experimental_Setup(argc, argv, action_to_do.variables);
 		if (!Succeeded(rc))
 			return __LINE__;
-		
 
 		switch (action_to_do.action) {
 			case NAction::execute:
@@ -151,10 +151,8 @@ int MainCalling main(int argc, char** argv) {
 				return __LINE__;
 		}
 
-
 		configuration.reset();	//extraline so that we can take memory snapshot to ease our debugging
 	}
 
-	
 	return result;	//so that we can nicely set breakpoints to take memory snapshots
 }
