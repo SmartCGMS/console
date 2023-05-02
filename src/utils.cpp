@@ -43,7 +43,7 @@
 #include "../../common/utils/string_utils.h"
 
 void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
-	std::wifstream hints_file{ hint_path };
+	std::wifstream hints_file{ filesystem::path{ hint_path } };
 	if (hints_file) {
 		std::wstring line;
 
@@ -121,7 +121,7 @@ bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expect
 
 					if (matches_wildcard) {
 						if (Is_Regular_File_Or_Symlink(enumerated_path))
-							Load_Hints(enumerated_path.path(), expected_parameters_size, parameters_file_type, hints_container);
+							Load_Hints(enumerated_path.path().wstring(), expected_parameters_size, parameters_file_type, hints_container);
 					}
 				}
 			}
