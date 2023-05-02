@@ -96,13 +96,13 @@ void Show_Help() {
 
     
 
-    const auto all_desc = scgms::get_solver_descriptors();
+    const auto all_desc = scgms::get_solver_descriptor_list();
     if (all_desc.empty()) {
         std::wcout << L"Warning! There's no solver descriptor actually available!" << std::endl;
     }
     else {
         std::wcout << std::endl << L"Available solvers:" << std::endl;
-        for (const auto& solver : scgms::get_solver_descriptors())
+        for (const auto& solver : scgms::get_solver_descriptor_list())
             if (!solver.specialized)
                 std::wcout << GUID_To_WString(solver.id) << " - " << solver.description << std::endl;
     }
@@ -141,7 +141,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
             const GUID solver_id = WString_To_GUID(Widen_Char(solver_id_arg.arg), ok);
             if (!ok) {
                 std::wcerr << L"Malformed solver id!" << std::endl;
-                const auto all_desc = scgms::get_solver_descriptors();
+                const auto all_desc = scgms::get_solver_descriptor_list();
                 if (all_desc.empty()) {
                     std::wcout << L"Warning! There's no solver descriptor currently available!" << std::endl;
                 }
