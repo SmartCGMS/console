@@ -123,23 +123,6 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 	const auto& save_config_arg = options[static_cast<size_t>(NOption_Index::save_config)];
 	result.save_config = static_cast<bool>(save_config_arg);
 
-<<<<<<< HEAD
-	//2. parameters applicable for optimization
-	if (result.action == NAction::optimize) {
-		//2.1 let's try to check preferred solver
-		const auto& solver_id_arg = options[static_cast<size_t>(NOption_Index::solver_id)];
-		if (solver_id_arg) {
-			bool ok = false;
-			const GUID solver_id = WString_To_GUID(Widen_Char(solver_id_arg.arg), ok);
-			if (!ok) {
-				std::wcerr << L"Malformed solver id!" << std::endl;
-				const auto all_desc = scgms::get_solver_descriptors();
-				if (all_desc.empty()) {
-					std::wcout << L"Warning! There's no solver descriptor currently available!" << std::endl;
-				}
-				else
-					std::wcout << L"Pass an id like this " << GUID_To_WString(all_desc[0].id) << std::endl;
-=======
     //2. parameters applicable for optimization
     if (result.action == NAction::optimize) {
         //2.1 let's try to check preferred solver        
@@ -155,7 +138,6 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
                 }
                 else
                     std::wcout << L"Pass an id like this " << GUID_To_WString(all_desc[0].id) << std::endl;
->>>>>>> origin/master
 
 				option::printUsage(std::cout, option_syntax.data());
 				result.action = NAction::failed_configuration;
