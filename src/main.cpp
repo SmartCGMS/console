@@ -102,7 +102,7 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		const HRESULT rc = configuration->Save_To_File(nullptr, errors.get());
 		errors.for_each([](auto str) { std::wcerr << str << std::endl; });
 		if (!Succeeded(rc)) {
-			std::wcerr << std::endl << L"Failed to save the configruation!" << std::endl;
+			std::wcerr << std::endl << L"Failed to save the configuration!" << std::endl;
 			std::wcerr << std::endl << L"Error 0x" << std::hex << rc << std::dec << ": "  << Describe_Error(rc) << std::endl;
 			return __LINE__;
 		}
