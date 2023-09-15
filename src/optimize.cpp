@@ -37,8 +37,8 @@
 #include "optimize.h"
 
 #include "utils.h"
-#include "../../common/utils/string_utils.h"
-#include "../../common/utils/system_utils.h"
+#include <scgms/utils/string_utils.h>
+#include <scgms/utils/system_utils.h>
 
 #include <iostream>
 

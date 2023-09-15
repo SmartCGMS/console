@@ -37,7 +37,7 @@
 
 #include "options.h"
 
-#include "../../common/rtl/FilterLib.h"
-#include "../../common/rtl/SolverLib.h"
+#include <scgms/rtl/FilterLib.h>
+#include <scgms/rtl/SolverLib.h>
 
 int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, const TAction &action, solver::TSolver_Progress& progress);

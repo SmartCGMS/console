@@ -37,8 +37,8 @@
 
 #pragma once
 
-#include "../../common/rtl/FilesystemLib.h"
-#include "../../common/iface/UIIface.h"
+#include <scgms/rtl/FilesystemLib.h>
+#include <scgms/iface/UIIface.h>
 
 #include <vector>
 

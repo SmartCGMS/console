@@ -38,7 +38,7 @@
 
 #include <fstream>
 
-#include "../../common/utils/string_utils.h"
+#include <scgms/utils/string_utils.h>
 
 void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
 	std::wifstream hints_file{ filesystem::path{ hint_path } };

@@ -36,9 +36,9 @@
 
 #include "options.h"
 
-#include "../../common/rtl/UILib.h"
-#include "../../common/utils/string_utils.h"
-#include "../../common/utils/optionparser.h"
+#include <scgms/rtl/UILib.h>
+#include <scgms/utils/string_utils.h>
+#include <scgms/utils/optionparser.h>
 
 #include <iostream>
 #include <typeinfo>

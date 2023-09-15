@@ -36,13 +36,13 @@
 
 #include "options.h"
 
-#include "../../common/rtl/scgmsLib.h"
-#include "../../common/rtl/FilterLib.h"
-#include "../../common/rtl/FilesystemLib.h"
-#include "../../common/rtl/referencedImpl.h"
-#include "../../common/rtl/SolverLib.h"
-#include "../../common/rtl/UILib.h"
-#include "../../common/utils/winapi_mapping.h"
+#include <scgms/rtl/scgmsLib.h>
+#include <scgms/rtl/FilterLib.h>
+#include <scgms/rtl/FilesystemLib.h>
+#include <scgms/rtl/referencedImpl.h>
+#include <scgms/rtl/SolverLib.h>
+#include <scgms/rtl/UILib.h>
+#include <scgms/utils/winapi_mapping.h>
 
 #include <iostream>
 #include <csignal>
@@ -56,7 +56,7 @@
   *  #define DDO_NOT_USE_QT
   */
 #ifndef DDO_NOT_USE_QT
-	#include "../../common/rtl/qdb_connector.h"
+	#include <scgms/rtl/qdb_connector.h>
 	#include <QtCore/QCoreApplication>
 #endif
 
