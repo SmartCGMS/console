@@ -34,7 +34,7 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 
-SET(PROJ "console")
+SET(PROJ "scgms-console")
 
 PROJECT(${PROJ})
 
