@@ -59,14 +59,20 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 	}
 
 	const auto [hint_rc, expected_param_size] = Count_Parameters_Size(configuration, action.parameters_to_optimize);
-	if (hint_rc != S_OK)
+	if (hint_rc != S_OK) {
 		return __LINE__;
-	std::vector<std::vector<double>> hints;
-	if (!Load_Hints(action.hints_to_load, expected_param_size, false, hints))	//load hints
-		return __LINE__;
+	}
 
-	if (!Load_Hints(action.hinting_parameters_to_load, expected_param_size, true, hints))	//load parameters
+	std::vector<std::vector<double>> hints;
+	//load hints
+	if (!Load_Hints(action.hints_to_load, expected_param_size, false, hints)) {
 		return __LINE__;
+	}
+
+	//load parameters
+	if (!Load_Hints(action.hinting_parameters_to_load, expected_param_size, true, hints)) {
+		return __LINE__;
+	}
 
 	std::vector<const double*> hints_ptr;
 	for (size_t i = 0; i < hints.size(); i++) {
@@ -85,11 +91,11 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		rc = scgms::Optimize_Parameters(configuration,
 			optimize_param_indices.data(), optimize_param_names.data(), optimize_param_count,
 #ifndef DDO_NOT_USE_QT
-			Setup_Filter_DB_Access
+			Setup_Filter_DB_Access,
 #else
-			nullptr
+			nullptr,
 #endif
-			, nullptr,
+			nullptr,
 			action.solver_id, action.population_size, action.generation_count,
 			hints_ptr.data(), hints_ptr.size(),
 			progress, errors);
@@ -100,6 +106,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 	double recent_percentage = std::numeric_limits<double>::quiet_NaN();
 	solver::TFitness recent_fitness = solver::Max_Fitness;
 	std::wcout << "Will report progress and best fitness. Optimizing...";
+
 	while (optimizing_flag) {
 		if (progress.max_progress != 0) {
 			double current_percentage = static_cast<double>(progress.current_progress) / static_cast<double>(progress.max_progress);
@@ -127,10 +134,13 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 
-	if (optimitizing_thread.joinable())
+	if (optimitizing_thread.joinable()) {
 		optimitizing_thread.join();
+	}
 
-	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
+	errors.for_each([](auto str) {
+		std::wcerr << str << std::endl;
+	});
 
 	if (rc == S_OK) {
 		std::wcout << L"\nResulting fitness:";
@@ -141,13 +151,17 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 		std::wcout << L"\nParameters were succesfully optimized, saving...";
 		errors = refcnt::Swstr_list{};
 		rc = configuration->Save_To_File(nullptr, errors.get());
-		errors.for_each([](auto str) { std::wcerr << str << std::endl; });
+		errors.for_each([](auto str) {
+			std::wcerr << str << std::endl;
+		});
+
 		if (!Succeeded(S_OK)) {
 			std::wcerr << std::endl << L"Failed to save optimized parameters!" << std::endl;
 			return __LINE__;
 		}
-		else
+		else {
 			std::wcout << L" saved." << std::endl;
+		}
 	}
 	else if (rc == S_FALSE) {
 		std::wcerr << L"Solver did not improve the solution." << std::endl;

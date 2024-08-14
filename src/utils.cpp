@@ -40,7 +40,8 @@
 
 #include <scgms/utils/string_utils.h>
 
-void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {	
+void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_size, const bool parameters_file_type, std::vector<std::vector<double>> &hints_container) {
+
 	std::wifstream hints_file{ filesystem::path{ hint_path } };
 	if (hints_file) {
 		std::wstring line;
@@ -63,23 +64,29 @@ void Load_Hints(const std::wstring &hint_path, const size_t expected_parameters_
 						loaded_hint.resize(expected_parameters_size);	//trim off upper bounds
 					}
 				} 
-				else
+				else {
 					ok = (loaded_hint.size() == expected_parameters_size);
+				}
 
-				if (ok)
+				if (ok) {
 					hints_container.push_back(loaded_hint);
-				else
+				}
+				else {
 					std::wcerr << L"Line no. " << line_counter << " contains a hint with a different than expected size.\n";
+				}
 			}
 
-			if (!ok)
+			if (!ok) {
 				std::wcerr << L"Skipped a possibly corrupted parameters line!" << std::endl;
+			}
 		}
 
 		std::wcout << L"Loaded " << hints_container.size() - initial_hint_count << " additional hints from " << hint_path << std::endl;
 
-	} else
+	}
+	else {
 		std::wcerr << L"Cannot open the hints file!" << std::endl;
+	}
 }
 
 
@@ -92,8 +99,9 @@ bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expect
 		const filesystem::path full_path{ Make_Absolute_Path(path_mask, current_dir) };
 
 		//First, we need to ensure that we are not dealing with a uniquely identified file name
-		if (Is_Regular_File_Or_Symlink(path_mask))
+		if (Is_Regular_File_Or_Symlink(path_mask)) {
 			Load_Hints(path_mask, expected_parameters_size, parameters_file_type, hints_container);
+		}
 		else {
 			//if not, then we are asked to enumerate entire directory, may be with a mask
 
@@ -111,15 +119,17 @@ bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expect
 					;
 
 				std::error_code ec;
-				if (effective_path.empty() || (!filesystem::exists(effective_path, ec) || ec))
+				if (effective_path.empty() || (!filesystem::exists(effective_path, ec) || ec)) {
 					return false;
+				}
 
 				for (auto& enumerated_path : filesystem::directory_iterator(effective_path)) {
 					const bool matches_wildcard = Match_Wildcard(enumerated_path.path().filename().wstring(), path_mask, case_sensitive);
 
 					if (matches_wildcard) {
-						if (Is_Regular_File_Or_Symlink(enumerated_path))
+						if (Is_Regular_File_Or_Symlink(enumerated_path)) {
 							Load_Hints(enumerated_path.path().wstring(), expected_parameters_size, parameters_file_type, hints_container);
+						}
 					}
 				}
 			}
@@ -128,8 +138,6 @@ bool Load_Hints(const std::vector<std::wstring>& hint_paths, const size_t expect
 
 	return true;
 }
-
-
 
 std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experimental_Setup(int argc, char** argv, const std::vector<TVariable> &variables) {
 	std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> result;
@@ -145,7 +153,9 @@ std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experime
 		rc = configuration->Load_From_File(config_filepath.c_str(), errors.get());	//and load it if we did
 	}
 
-	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
+	errors.for_each([](auto str) {
+		std::wcerr << str << std::endl;
+	});
 
 	std::get<0>(result) = rc;
 
@@ -165,15 +175,16 @@ std::tuple<HRESULT, scgms::SPersistent_Filter_Chain_Configuration> Load_Experime
 
 		std::get<1>(result) = std::move(configuration);
 
-		if (rc == S_FALSE)
+		if (rc == S_FALSE) {
 			std::wcerr << L"Warning: some filters were not loaded, or some variables were not set!" << std::endl;
-	} else
+		}
+	}
+	else {
 		std::wcerr << L"Cannot load the configuration file " << config_filepath << std::endl << L"Error code: " << rc << std::endl;
+	}
 
 	return result;
 }
-
-
 
 std::tuple<HRESULT, size_t> Count_Parameters_Size(scgms::SPersistent_Filter_Chain_Configuration& configuration, const std::vector<TOptimize_Parameter>& parameters) {
 

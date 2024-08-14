@@ -59,8 +59,9 @@
 #endif
 
 scgms::SFilter_Executor Global_Filter_Executor;
-solver::TSolver_Progress Global_Progress = solver::Null_Solver_Progress; //so that we can cancel from sigint
 
+//so that we can cancel from sigint
+solver::TSolver_Progress Global_Progress = solver::Null_Solver_Progress;
 
 void MainCalling sighandler(int signo) {
 	// SIGINT should terminate filters; this will eventually terminate whole app
@@ -77,6 +78,7 @@ void MainCalling sighandler(int signo) {
 }
 
 int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configuration, const bool save_config) {
+
 	refcnt::Swstr_list errors;
 	Global_Filter_Executor = scgms::SFilter_Executor{ configuration.get(),
 #ifndef DDO_NOT_USE_QT
@@ -86,7 +88,10 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 #endif
 		nullptr, errors
 	};
-	errors.for_each([](auto str) { std::wcerr << str << std::endl;	});
+
+	errors.for_each([](auto str) {
+		std::wcerr << str << std::endl;
+	});
 
 	if (!Global_Filter_Executor) {
 		std::wcerr << L"Could not execute the filters!" << std::endl;
@@ -100,14 +105,18 @@ int Execute_Configuration(scgms::SPersistent_Filter_Chain_Configuration configur
 		std::wcout << L"Saving configuration...";
 		errors = refcnt::Swstr_list{};
 		const HRESULT rc = configuration->Save_To_File(nullptr, errors.get());
-		errors.for_each([](auto str) { std::wcerr << str << std::endl; });
+		errors.for_each([](auto str) {
+			std::wcerr << str << std::endl;
+		});
+
 		if (!Succeeded(rc)) {
 			std::wcerr << std::endl << L"Failed to save the configuration!" << std::endl;
 			std::wcerr << std::endl << L"Error 0x" << std::hex << rc << std::dec << ": "  << Describe_Error(rc) << std::endl;
 			return __LINE__;
 		}
-		else
+		else {
 			std::wcout << L" saved." << std::endl;
+		}
 	}
 
 	return 0;
@@ -130,27 +139,28 @@ int MainCalling main(int argc, char** argv) {
 
 	TAction action_to_do = Parse_Options(argc, const_cast<const char**> (argv));
 	if (action_to_do.action != NAction::failed_configuration) {
-				
+
 		auto [rc, configuration] = Load_Experimental_Setup(argc, argv, action_to_do.variables);
-		if (!Succeeded(rc))
+		if (!Succeeded(rc)) {
 			return __LINE__;
+		}
 
 		switch (action_to_do.action) {
 			case NAction::execute:
 				result = Global_Progress.cancelled == 0 ? Execute_Configuration(configuration, action_to_do.save_config) : __LINE__;
 				break;
-
 			case NAction::optimize:
 				result = Global_Progress.cancelled == 0 ? Optimize_Configuration(configuration, action_to_do, Global_Progress) : __LINE__;
 				break;
-
 			default:
 				std::wcout << L"Not-implemented action requested! Action code: " << static_cast<size_t>(action_to_do.action) << std::endl;
 				return __LINE__;
 		}
 
-		configuration.reset();	//extraline so that we can take memory snapshot to ease our debugging
+		//extra line so that we can take memory snapshot to ease our debugging
+		configuration.reset();
 	}
 
-	return result;	//so that we can nicely set breakpoints to take memory snapshots
+	//so that we can nicely set breakpoints to take memory snapshots
+	return result;
 }

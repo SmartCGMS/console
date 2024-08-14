@@ -45,7 +45,7 @@
 
 using TOption_Index = std::remove_cv<decltype(option::Descriptor::index)>::type;
 enum class NOption_Index : TOption_Index {
-	invalid = 0,    //for zero-terminated padding, must be zero
+	invalid = 0, //for zero-terminated padding, must be zero
 	unknown, 
 	action,
 	parameter_to_optimize,
@@ -58,7 +58,6 @@ enum class NOption_Index : TOption_Index {
 	parameters_hint
 };
 
-
 using TOption_Type = std::remove_cv<decltype(option::Descriptor::type)>::type;
 enum class NAction_Type : TOption_Type {
 	unused = 0,
@@ -66,38 +65,144 @@ enum class NAction_Type : TOption_Type {
 	optimize_config,
 };
 
-constexpr option::Descriptor Unknown_Option = { static_cast<TOption_Index>(NOption_Index::unknown), static_cast<TOption_Type>(NAction_Type::unused), "", "" , option::Arg::None, "Usage: console3.exe configuration_path [options]\n\n"
-											"Options:" };
+constexpr option::Descriptor Unknown_Option = {
+	static_cast<TOption_Index>(NOption_Index::unknown),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"",
+	"",
+	option::Arg::None,
+	"Usage: console3.exe configuration_path [options]\n\nOptions:"
+};
 
+constexpr option::Descriptor actExecute = {
+	static_cast<TOption_Index>(NOption_Index::action),
+	static_cast<TOption_Type>(NAction_Type::execute_config),
+	"e",
+	"execute",
+	option::Arg::None,
+	"--execute, -e \t\texecutes the configuratin, exclusive to optimize; default action"
+};
 
-constexpr option::Descriptor actExecute = { static_cast<TOption_Index>(NOption_Index::action), static_cast<TOption_Type>(NAction_Type::execute_config), "e" , "execute" ,option::Arg::None, "--execute, -e \t\texecutes the configuratin, exclusive to optimize; default action" };
-constexpr option::Descriptor actOptimize = { static_cast<TOption_Index>(NOption_Index::action), static_cast<TOption_Type>(NAction_Type::optimize_config), "o" , "optimize" ,option::Arg::None, "--optimize, -o \t\tperforms optimization instead of execution" };
-constexpr option::Descriptor actSave = { static_cast<TOption_Index>(NOption_Index::save_config), static_cast<TOption_Type>(NAction_Type::unused), "s" , "save_configuration" ,option::Arg::None, "--save_configuration, -s \t\tsaves the config after execution/optimization" };
-constexpr option::Descriptor actSolver_Id = { static_cast<TOption_Index>(NOption_Index::solver_id), static_cast<TOption_Type>(NAction_Type::unused), "r" , "solver_id" ,option::Arg::Optional, "--solver_id, -r={solver-guid} \t\tselects the desired solver" };
-constexpr option::Descriptor actGeneration_Count = { static_cast<TOption_Index>(NOption_Index::generation_count), static_cast<TOption_Type>(NAction_Type::unused), "g" , "generation_count" ,option::Arg::Optional, "--generation_count, -g=sets the maximum number of generations/iterations for the solver" };
-constexpr option::Descriptor actPopulation_Size = { static_cast<TOption_Index>(NOption_Index::population_size), static_cast<TOption_Type>(NAction_Type::unused), "z" , "population_size" ,option::Arg::Optional, "--population_size, -z=sets the population size/problem stepping for the solver, if applicable" };
+constexpr option::Descriptor actOptimize = {
+	static_cast<TOption_Index>(NOption_Index::action),
+	static_cast<TOption_Type>(NAction_Type::optimize_config),
+	"o",
+	"optimize",
+	option::Arg::None,
+	"--optimize, -o \t\tperforms optimization instead of execution"
+};
 
-constexpr option::Descriptor actParameter = { static_cast<TOption_Index>(NOption_Index::parameter_to_optimize), static_cast<TOption_Type>(NAction_Type::unused), "p" , "parameter" ,option::Arg::Optional, "--parameter, -p=filter_zero_index,parameter_name - possibly multiple options gives parameters to optimize" };
-constexpr option::Descriptor actVariable = { static_cast<TOption_Index>(NOption_Index::variable), static_cast<TOption_Type>(NAction_Type::unused), "v" , "variable" ,option::Arg::Optional, "--variable, -v=name:=value sets internal variables to possibly complement operating-system variables" };
-constexpr option::Descriptor actHint = { static_cast<TOption_Index>(NOption_Index::hint), static_cast<TOption_Type>(NAction_Type::unused), "h" , "hint" ,option::Arg::Optional, "--hint, -h=file_mask to files containing hints" };
-constexpr option::Descriptor actParameter_Hint = { static_cast<TOption_Index>(NOption_Index::parameters_hint), static_cast<TOption_Type>(NAction_Type::unused), "m" , "parameters_hint" ,option::Arg::Optional, "--parameters_hint, -m=file_mask, but loads single hint from a parameters file" };
-constexpr option::Descriptor Zero_Terminating_Option = { static_cast<TOption_Index>(NOption_Index::invalid), static_cast<TOption_Type>(NAction_Type::unused), nullptr , nullptr ,option::Arg::None, nullptr };
+constexpr option::Descriptor actSave = {
+	static_cast<TOption_Index>(NOption_Index::save_config),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"s",
+	"save_configuration",
+	option::Arg::None,
+	"--save_configuration, -s \t\tsaves the config after execution/optimization"
+};
 
-constexpr std::array<option::Descriptor, 12> option_syntax{ Unknown_Option, actExecute, actOptimize, actSave, actSolver_Id, actGeneration_Count, actPopulation_Size, actParameter, actVariable, actHint, actParameter_Hint, Zero_Terminating_Option };
+constexpr option::Descriptor actSolver_Id = {
+	static_cast<TOption_Index>(NOption_Index::solver_id),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"r",
+	"solver_id",
+	option::Arg::Optional,
+	"--solver_id, -r={solver-guid} \t\tselects the desired solver"
+};
+
+constexpr option::Descriptor actGeneration_Count = {
+	static_cast<TOption_Index>(NOption_Index::generation_count),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"g",
+	"generation_count",
+	option::Arg::Optional,
+	"--generation_count, -g=sets the maximum number of generations/iterations for the solver"
+};
+
+constexpr option::Descriptor actPopulation_Size = {
+	static_cast<TOption_Index>(NOption_Index::population_size),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"z",
+	"population_size",
+	option::Arg::Optional,
+	"--population_size, -z=sets the population size/problem stepping for the solver, if applicable"
+};
+
+constexpr option::Descriptor actParameter = {
+	static_cast<TOption_Index>(NOption_Index::parameter_to_optimize),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"p",
+	"parameter",
+	option::Arg::Optional,
+	"--parameter, -p=filter_zero_index,parameter_name - possibly multiple options gives parameters to optimize"
+};
+
+constexpr option::Descriptor actVariable = {
+	static_cast<TOption_Index>(NOption_Index::variable),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"v",
+	"variable",
+	option::Arg::Optional,
+	"--variable, -v=name:=value sets internal variables to possibly complement operating-system variables"
+};
+
+constexpr option::Descriptor actHint = {
+	static_cast<TOption_Index>(NOption_Index::hint),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"h",
+	"hint",
+	option::Arg::Optional,
+	"--hint, -h=file_mask to files containing hints"
+};
+
+constexpr option::Descriptor actParameter_Hint = {
+	static_cast<TOption_Index>(NOption_Index::parameters_hint),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	"m",
+	"parameters_hint",
+	option::Arg::Optional,
+	"--parameters_hint, -m=file_mask, but loads single hint from a parameters file"
+};
+
+constexpr option::Descriptor Zero_Terminating_Option = {
+	static_cast<TOption_Index>(NOption_Index::invalid),
+	static_cast<TOption_Type>(NAction_Type::unused),
+	nullptr,
+	nullptr,
+	option::Arg::None,
+	nullptr
+};
+
+constexpr std::array<option::Descriptor, 12> option_syntax{
+	Unknown_Option,
+	actExecute,
+	actOptimize,
+	actSave,
+	actSolver_Id,
+	actGeneration_Count,
+	actPopulation_Size,
+	actParameter,
+	actVariable,
+	actHint,
+	actParameter_Hint,
+	Zero_Terminating_Option
+};
 
 void Show_Help() {
 	option::printUsage(std::cout, option_syntax.data());    
 
-    const auto all_desc = scgms::get_solver_descriptor_list();
-    if (all_desc.empty()) {
-        std::wcout << L"Warning! There's no solver descriptor actually available!" << std::endl;
-    }
-    else {
-        std::wcout << std::endl << L"Available solvers:" << std::endl;
-        for (const auto& solver : scgms::get_solver_descriptor_list())
-            if (!solver.specialized)
-                std::wcout << GUID_To_WString(solver.id) << " - " << solver.description << std::endl;
-    }
+	const auto all_desc = scgms::get_solver_descriptor_list();
+	if (all_desc.empty()) {
+		std::wcout << L"Warning! There's no solver descriptor actually available!" << std::endl;
+	}
+	else {
+		std::wcout << std::endl << L"Available solvers:" << std::endl;
+		for (const auto& solver : scgms::get_solver_descriptor_list()) {
+			if (!solver.specialized) {
+				std::wcout << GUID_To_WString(solver.id) << " - " << solver.description << std::endl;
+			}
+		}
+	}
 }
 
 std::vector<std::wstring> Gather_Values(const NOption_Index idx, std::vector<option::Option>& options) {
@@ -105,47 +210,52 @@ std::vector<std::wstring> Gather_Values(const NOption_Index idx, std::vector<opt
 
 	for (option::Option* opt = options[static_cast<size_t>(idx)]; opt; opt = opt->next()) {
 		const auto a = opt->arg;
-		if ((a == nullptr) || (*a == 0))
-			std::wcerr << "Detected empty value for parameter " << opt->name <<".\n";
-		else
+		if ((a == nullptr) || (*a == 0)) {
+			std::wcerr << "Detected empty value for parameter " << opt->name << ".\n";
+		}
+		else {
 			result.push_back(Widen_Char(a));
+		}
 	}
 
 	return result;
 }
 
 TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& options) {
-	TAction result = known_config;    
+	TAction result = known_config;
 
 	//1. common parameters
 	const auto& save_config_arg = options[static_cast<size_t>(NOption_Index::save_config)];
 	result.save_config = static_cast<bool>(save_config_arg);
 
-    //2. parameters applicable for optimization
-    if (result.action == NAction::optimize) {
-        //2.1 let's try to check preferred solver        
-        const auto& solver_id_arg = options[static_cast<size_t>(NOption_Index::solver_id)];
-        if (solver_id_arg) {
-            bool ok = false;
-            const GUID solver_id = WString_To_GUID(Widen_Char(solver_id_arg.arg), ok);
-            if (!ok) {
-                std::wcerr << L"Malformed solver id!" << std::endl;
-                const auto all_desc = scgms::get_solver_descriptor_list();
-                if (all_desc.empty()) {
-                    std::wcout << L"Warning! There's no solver descriptor currently available!" << std::endl;
-                }
-                else
-                    std::wcout << L"Pass an id like this " << GUID_To_WString(all_desc[0].id) << std::endl;
+	//2. parameters applicable for optimization
+	if (result.action == NAction::optimize) {
+		//2.1 let's try to check preferred solver        
+		const auto& solver_id_arg = options[static_cast<size_t>(NOption_Index::solver_id)];
+		if (solver_id_arg) {
+			bool ok = false;
+			const GUID solver_id = WString_To_GUID(Widen_Char(solver_id_arg.arg), ok);
+			if (!ok) {
+				std::wcerr << L"Malformed solver id!" << std::endl;
+				const auto all_desc = scgms::get_solver_descriptor_list();
+				if (all_desc.empty()) {
+					std::wcout << L"Warning! There's no solver descriptor currently available!" << std::endl;
+				}
+				else {
+					std::wcout << L"Pass an id like this " << GUID_To_WString(all_desc[0].id) << std::endl;
+				}
 
 				option::printUsage(std::cout, option_syntax.data());
 				result.action = NAction::failed_configuration;
 				return result;
 			}
-			else 
+			else {
 				result.solver_id = solver_id;
+			}
 		}
-		else
+		else {
 			std::wcout << "Solver ID not set, will use the default one. ";
+		}
 
 		// solver descriptor scope
 		{
@@ -157,8 +267,9 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 				result.action = NAction::failed_configuration;
 				return result;
 			}
-			else
-				std::wcout << L"Resolved solver id to: " << solver_desc.description << std::endl;            
+			else {
+				std::wcout << L"Resolved solver id to: " << solver_desc.description << std::endl;
+			}
 		}
 
 		//2.2 generation count
@@ -204,7 +315,9 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 			
 			bool resolved_ok = false;
 			std::wstring str = Widen_Char(opt->arg);
+
 			const auto delim_pos = str.find(L",");
+
 			if (delim_pos != std::wstring::npos) {
 				str[delim_pos] = 0;
 				TOptimize_Parameter param_desc;
@@ -240,8 +353,9 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 				var_to_set.value = var_str.data() + delim_pos + 2;
 
 				resolved_ok = !var_to_set.name.empty() && var_to_set.value.empty();
-				if (resolved_ok)
+				if (resolved_ok) {
 					result.variables.push_back(var_to_set);
+				}
 			}
 
 			if (!resolved_ok) {
@@ -260,7 +374,6 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 
 	return result;
 }
-
 
 TAction Parse_Options(const int argc, const char** argv) {
 
@@ -304,15 +417,12 @@ TAction Parse_Options(const int argc, const char** argv) {
 			case static_cast<TOption_Type>(NAction_Type::optimize_config):
 				result.action = NAction::optimize;
 				break;
-
-			case static_cast<TOption_Type>(NAction_Type::execute_config): 
+			case static_cast<TOption_Type>(NAction_Type::execute_config):
 				result.action = NAction::execute;
 				break;
-
 			default:
 				result.action = NAction::failed_configuration;
 				std::wcerr << L"Unknown action code: " << static_cast<size_t>(action_type) << std::endl;
-
 				std::cout << actExecute.help << std::endl;
 				std::cout << actOptimize.help << std::endl;
 				break;
@@ -323,8 +433,9 @@ TAction Parse_Options(const int argc, const char** argv) {
 		result.action = NAction::execute;
 	}
 
-	if (result.action != NAction::failed_configuration)
+	if (result.action != NAction::failed_configuration) {
 		result = Resolve_Parameters(result, options);
+	}
 
 	return result;
 }

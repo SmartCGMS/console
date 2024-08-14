@@ -58,19 +58,25 @@ struct TVariable {
 };
 
 struct TAction {
-	NAction action = NAction::failed_configuration;			// what to do
+	// what to do
+	NAction action = NAction::failed_configuration;
 
 	std::wstring config_path;
 	bool save_config = false;
-	GUID solver_id = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };	// Halton MetaDE
-	size_t generation_count = 96;							// number of CPU cores divisible by 4, 8 and 16 and 32
+
+	// default: Halton MetaDE
+	GUID solver_id = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };
+	// ideally a number of CPU cores divisible by 4, 8 and 16 and 32
+	size_t generation_count = 96;
 	size_t population_size = 1000;
 
 	std::vector<TOptimize_Parameter> parameters_to_optimize;
 	std::vector<TVariable> variables;
-	
-	std::vector<std::wstring> hints_to_load;				// may include wildcard
-	std::vector<std::wstring> hinting_parameters_to_load;	// may include wildcard
+
+	// filenames of hints to be loaded; may include wildcard
+	std::vector<std::wstring> hints_to_load;
+	// filenames of hinting parameters to be loaded; may include wildcard
+	std::vector<std::wstring> hinting_parameters_to_load;
 };
 
 TAction Parse_Options(const int argc, const char** argv);

@@ -34,7 +34,6 @@
  *    Volume 177, pp. 354-362, 2020
  */
 
-
 #include "options.h"
 
 #include <scgms/rtl/FilterLib.h>
