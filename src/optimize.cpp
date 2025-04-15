@@ -106,6 +106,7 @@ int Optimize_Configuration(scgms::SPersistent_Filter_Chain_Configuration configu
 	double recent_percentage = std::numeric_limits<double>::quiet_NaN();
 	solver::TFitness recent_fitness = solver::Max_Fitness;
 	std::wcout << "Will report progress and best fitness. Optimizing...";
+	std::wcout.flush();
 
 	while (optimizing_flag) {
 		if (progress.max_progress != 0) {

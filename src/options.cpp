@@ -71,7 +71,7 @@ constexpr option::Descriptor Unknown_Option = {
 	"",
 	"",
 	option::Arg::None,
-	"Usage: console3.exe configuration_path [options]\n\nOptions:"
+	"Usage: scgms-console.exe configuration_path [options]\n\nOptions:"
 };
 
 constexpr option::Descriptor actExecute = {
@@ -107,7 +107,7 @@ constexpr option::Descriptor actSolver_Id = {
 	"r",
 	"solver_id",
 	option::Arg::Optional,
-	"--solver_id, -r={solver-guid} \t\tselects the desired solver"
+	"--solver_id=, -r={solver-guid} \t\tselects the desired solver"
 };
 
 constexpr option::Descriptor actGeneration_Count = {
@@ -116,7 +116,7 @@ constexpr option::Descriptor actGeneration_Count = {
 	"g",
 	"generation_count",
 	option::Arg::Optional,
-	"--generation_count, -g=sets the maximum number of generations/iterations for the solver"
+	"--generation_count=, -g=sets the maximum number of generations/iterations for the solver"
 };
 
 constexpr option::Descriptor actPopulation_Size = {
@@ -125,7 +125,7 @@ constexpr option::Descriptor actPopulation_Size = {
 	"z",
 	"population_size",
 	option::Arg::Optional,
-	"--population_size, -z=sets the population size/problem stepping for the solver, if applicable"
+	"--population_size=, -z=sets the population size/problem stepping for the solver, if applicable"
 };
 
 constexpr option::Descriptor actParameter = {
@@ -134,7 +134,7 @@ constexpr option::Descriptor actParameter = {
 	"p",
 	"parameter",
 	option::Arg::Optional,
-	"--parameter, -p=filter_zero_index,parameter_name - possibly multiple options gives parameters to optimize"
+	"--parameter=, -p=filter_zero_index,parameter_name - possibly multiple options gives parameters to optimize"
 };
 
 constexpr option::Descriptor actVariable = {
@@ -143,7 +143,7 @@ constexpr option::Descriptor actVariable = {
 	"v",
 	"variable",
 	option::Arg::Optional,
-	"--variable, -v=name:=value sets internal variables to possibly complement operating-system variables"
+	"--variable=, -v=name:=value sets internal variables to possibly complement operating-system variables"
 };
 
 constexpr option::Descriptor actHint = {
@@ -152,7 +152,7 @@ constexpr option::Descriptor actHint = {
 	"h",
 	"hint",
 	option::Arg::Optional,
-	"--hint, -h=file_mask to files containing hints"
+	"--hint=, -h=file_mask to files containing hints"
 };
 
 constexpr option::Descriptor actParameter_Hint = {
@@ -161,7 +161,7 @@ constexpr option::Descriptor actParameter_Hint = {
 	"m",
 	"parameters_hint",
 	option::Arg::Optional,
-	"--parameters_hint, -m=file_mask, but loads single hint from a parameters file"
+	"--parameters_hint=, -m=file_mask, but loads single hint from a parameters file"
 };
 
 constexpr option::Descriptor Zero_Terminating_Option = {
@@ -189,7 +189,7 @@ constexpr std::array<option::Descriptor, 12> option_syntax{
 };
 
 void Show_Help() {
-	option::printUsage(std::cout, option_syntax.data());    
+	option::printUsage(std::cout, option_syntax.data());
 
 	const auto all_desc = scgms::get_solver_descriptor_list();
 	if (all_desc.empty()) {
@@ -230,7 +230,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 
 	//2. parameters applicable for optimization
 	if (result.action == NAction::optimize) {
-		//2.1 let's try to check preferred solver        
+		//2.1 let's try to check preferred solver
 		const auto& solver_id_arg = options[static_cast<size_t>(NOption_Index::solver_id)];
 		if (solver_id_arg) {
 			bool ok = false;
@@ -259,7 +259,7 @@ TAction Resolve_Parameters(TAction &known_config, std::vector<option::Option>& o
 
 		// solver descriptor scope
 		{
-			//id looks good, let's try to resolve it    
+			//id looks good, let's try to resolve it
 			scgms::TSolver_Descriptor solver_desc = scgms::Null_Solver_Descriptor;
 			const bool ok = scgms::get_solver_descriptor_by_id(result.solver_id, solver_desc);
 			if (!ok) {
